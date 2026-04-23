@@ -1,0 +1,116 @@
+{
+  "$schema": "https://boundra.dev/schemas/boundra-config.v1.json",
+  "version": 1,
+  "project": {
+    "name": "boundra",
+    "workspaceRoot": "."
+  },
+  "paths": {
+    "apps": "apps",
+    "domains": "domains",
+    "packages": "packages",
+    "crates": "crates"
+  },
+  "domain": {
+    "layers": [
+      "client",
+      "server",
+      "shared",
+      "mcp",
+      "tests"
+    ],
+    "manifestFile": "domain.json",
+    "publicApi": {
+      "client": [
+        "./client/public.ts"
+      ],
+      "server": [
+        "./server/public.ts"
+      ],
+      "shared": [
+        "./shared/public.ts"
+      ]
+    }
+  },
+  "naming": {
+    "caseStyle": "kebab-case",
+    "enforceFor": [
+      "domain",
+      "file",
+      "directory",
+      "branch",
+      "resource"
+    ]
+  },
+  "rules": {
+    "BR-001": {
+      "enabled": true,
+      "level": "error",
+      "message": "client layer cannot import server layer"
+    },
+    "BR-002": {
+      "enabled": true,
+      "level": "error",
+      "message": "server layer cannot import client layer"
+    },
+    "BR-003": {
+      "enabled": true,
+      "level": "error",
+      "message": "shared layer must be pure and must not depend on UI/DB/infra runtime",
+      "blockedPrefixes": [
+        "packages/ui",
+        "packages/infra",
+        "prisma",
+        "typeorm",
+        "@mui",
+        "react"
+      ]
+    },
+    "BR-004": {
+      "enabled": true,
+      "level": "error",
+      "message": "cross-domain import is only allowed via declared public API"
+    }
+  },
+  "checkBoundaries": {
+    "includeExtensions": [
+      "ts",
+      "tsx",
+      "js",
+      "jsx"
+    ],
+    "ignore": [
+      "**/node_modules/**",
+      "**/dist/**",
+      "**/build/**",
+      "**/coverage/**",
+      "**/target/**"
+    ],
+    "output": {
+      "defaultFormat": "text",
+      "supportedFormats": [
+        "text",
+        "json"
+      ]
+    },
+    "exitCodes": {
+      "ok": 0,
+      "violations": 1,
+      "configError": 2,
+      "runtimeError": 3
+    }
+  },
+  "codegen": {
+    "routeTemplate": "templates/route.ts.hbs",
+    "queryTemplate": "templates/query.ts.hbs",
+    "mutationTemplate": "templates/mutation.ts.hbs"
+  },
+  "graph": {
+    "defaultFormat": "mermaid",
+    "supportedFormats": [
+      "mermaid",
+      "json",
+      "dot"
+    ]
+  }
+}

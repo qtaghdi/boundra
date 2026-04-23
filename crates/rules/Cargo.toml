@@ -1,0 +1,11 @@
+[package]
+name = "boundra-rules"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+boundra-core = { path = "../core" }
+boundra-parser = { path = "../parser" }
+
+[lib]
+path = "src/lib.rs"

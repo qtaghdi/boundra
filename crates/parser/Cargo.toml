@@ -1,0 +1,10 @@
+[package]
+name = "boundra-parser"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+boundra-core = { path = "../core" }
+
+[lib]
+path = "src/lib.rs"

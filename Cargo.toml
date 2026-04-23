@@ -1,0 +1,17 @@
+[workspace]
+members = [
+  "crates/core",
+  "crates/parser",
+  "crates/rules",
+  "crates/cli",
+]
+resolver = "2"
+
+[workspace.package]
+edition = "2021"
+license = "MIT"
+authors = ["Boundra Team"]
+
+[workspace.lints.clippy]
+all = "warn"
+pedantic = "warn"

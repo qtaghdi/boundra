@@ -1,0 +1,21 @@
+# Node
+node_modules/
+.pnpm-store/
+
+# Rust
+target/
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+
+# Env
+.env
+.env.*
+
+# Build artifacts
+dist/
+build/
+coverage/

@@ -1,0 +1,13 @@
+[package]
+name = "boundra-cli"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+boundra-core = { path = "../core" }
+boundra-parser = { path = "../parser" }
+boundra-rules = { path = "../rules" }
+
+[[bin]]
+name = "boundra"
+path = "src/main.rs"
