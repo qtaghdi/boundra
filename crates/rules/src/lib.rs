@@ -13,6 +13,22 @@ pub fn check_boundaries(imports: &[ImportRecord]) -> Vec<Violation> {
             });
 
         let resolved_target = resolve_import_path(&record.source_dir, &record.import_path);
+
+        if source_layer == Layer::Shared
+            && is_shared_runtime_dependency(&record.import_path, resolved_target.as_deref())
+        {
+            violations.push(Violation {
+                rule: RuleCode::Br003,
+                file: record.source_file.clone(),
+                line: record.line,
+                import_path: record.import_path.clone(),
+                message: "shared layer cannot depend on UI, DB, or runtime infrastructure"
+                    .to_string(),
+                suggestion: "move runtime code to client/server and keep shared as pure contracts"
+                    .to_string(),
+            });
+        }
+
         let Some(target) = resolved_target else {
             continue;
         };
@@ -111,6 +127,49 @@ fn is_cross_domain_internal_import(
     !is_public_api_path(target_domain, target_path)
 }
 
+fn is_shared_runtime_dependency(import_path: &str, resolved_target: Option<&str>) -> bool {
+    let normalized_import = normalize_path(import_path);
+
+    if is_blocked_external_dependency(&normalized_import) {
+        return true;
+    }
+
+    resolved_target.is_some_and(is_blocked_workspace_dependency)
+        || is_blocked_workspace_dependency(&normalized_import)
+}
+
+fn is_blocked_external_dependency(import_path: &str) -> bool {
+    let root = import_path.split('/').next().unwrap_or(import_path);
+
+    matches!(
+        root,
+        "react"
+            | "react-dom"
+            | "next"
+            | "fs"
+            | "path"
+            | "crypto"
+            | "child_process"
+            | "stream"
+            | "http"
+            | "https"
+            | "os"
+            | "process"
+    ) || import_path == "@prisma/client"
+        || import_path.starts_with("@prisma/client/")
+        || import_path.starts_with("node:")
+}
+
+fn is_blocked_workspace_dependency(path: &str) -> bool {
+    path.starts_with("packages/ui/")
+        || path == "packages/ui"
+        || path.starts_with("packages/db/")
+        || path == "packages/db"
+        || path.starts_with("packages/infra/")
+        || path == "packages/infra"
+        || path.starts_with("apps/")
+}
+
 fn is_public_api_path(domain: &str, target_path: &str) -> bool {
     let normalized_path = normalize_path(target_path);
     let normalized = strip_ts_like_extension(&normalized_path);
@@ -175,6 +234,74 @@ mod tests {
         let violations = check_boundaries(&imports);
         assert_eq!(violations.len(), 1);
         assert_eq!(violations[0].rule, RuleCode::Br002);
+    }
+
+    #[test]
+    fn detects_br_003_for_shared_ui_dependency() {
+        let imports = vec![ImportRecord {
+            source_file: "domains/auth/shared/public.ts".to_string(),
+            source_dir: "domains/auth/shared".to_string(),
+            line: 1,
+            import_path: "react".to_string(),
+        }];
+
+        let violations = check_boundaries(&imports);
+        assert_eq!(violations.len(), 1);
+        assert_eq!(violations[0].rule, RuleCode::Br003);
+    }
+
+    #[test]
+    fn detects_br_003_for_shared_db_dependency() {
+        let imports = vec![ImportRecord {
+            source_file: "domains/auth/shared/public.ts".to_string(),
+            source_dir: "domains/auth/shared".to_string(),
+            line: 2,
+            import_path: "@prisma/client".to_string(),
+        }];
+
+        let violations = check_boundaries(&imports);
+        assert_eq!(violations.len(), 1);
+        assert_eq!(violations[0].rule, RuleCode::Br003);
+    }
+
+    #[test]
+    fn detects_br_003_for_shared_workspace_infra_dependency() {
+        let imports = vec![ImportRecord {
+            source_file: "domains/auth/shared/public.ts".to_string(),
+            source_dir: "domains/auth/shared".to_string(),
+            line: 3,
+            import_path: "../../../packages/ui/button".to_string(),
+        }];
+
+        let violations = check_boundaries(&imports);
+        assert_eq!(violations.len(), 1);
+        assert_eq!(violations[0].rule, RuleCode::Br003);
+    }
+
+    #[test]
+    fn allows_shared_pure_dependency() {
+        let imports = vec![ImportRecord {
+            source_file: "domains/auth/shared/public.ts".to_string(),
+            source_dir: "domains/auth/shared".to_string(),
+            line: 1,
+            import_path: "zod".to_string(),
+        }];
+
+        let violations = check_boundaries(&imports);
+        assert!(violations.is_empty());
+    }
+
+    #[test]
+    fn allows_shared_to_same_domain_shared_import() {
+        let imports = vec![ImportRecord {
+            source_file: "domains/auth/shared/public.ts".to_string(),
+            source_dir: "domains/auth/shared".to_string(),
+            line: 1,
+            import_path: "./schema".to_string(),
+        }];
+
+        let violations = check_boundaries(&imports);
+        assert!(violations.is_empty());
     }
 
     #[test]
