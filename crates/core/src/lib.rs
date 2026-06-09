@@ -4,6 +4,7 @@ use std::fmt::{Display, Formatter};
 pub enum RuleCode {
     Br001,
     Br002,
+    Br004,
 }
 
 impl RuleCode {
@@ -11,6 +12,7 @@ impl RuleCode {
         match self {
             Self::Br001 => "BR-001",
             Self::Br002 => "BR-002",
+            Self::Br004 => "BR-004",
         }
     }
 }
