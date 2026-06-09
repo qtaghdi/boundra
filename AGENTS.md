@@ -102,6 +102,8 @@ crates/
 - 공유 계층(`shared`) 순수성 훼손 금지
 - 리뷰는 "기능 동작"보다 "경계/계약 위반 리스크"를 먼저 본다
 - 파일/폴더/브랜치/CLI 리소스 이름은 `kebab-case only`를 적용한다
+- 커밋 메시지는 `<type>(<scope>): <message>` 형식을 사용한다. 예: `config(domain): add commit convention`
+- 커밋 `type`과 `scope`는 `kebab-case only`를 적용한다
 
 ## 10. PR Checklist
 
