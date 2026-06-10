@@ -1,7 +1,21 @@
-use boundra_core::{Layer, RuleCode, Violation};
+use std::collections::BTreeMap;
+
+use boundra_core::{DomainManifest, Layer, RuleCode, Violation};
 use boundra_parser::ImportRecord;
 
 pub fn check_boundaries(imports: &[ImportRecord]) -> Vec<Violation> {
+    check_boundaries_with_context(imports, &BoundaryContext::default())
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct BoundaryContext {
+    pub domains: BTreeMap<String, DomainManifest>,
+}
+
+pub fn check_boundaries_with_context(
+    imports: &[ImportRecord],
+    context: &BoundaryContext,
+) -> Vec<Violation> {
     let mut violations = Vec::new();
 
     for record in imports {
@@ -61,7 +75,7 @@ pub fn check_boundaries(imports: &[ImportRecord]) -> Vec<Violation> {
             _ => {}
         }
 
-        if is_cross_domain_internal_import(&source_domain, &target_domain, &target) {
+        if is_cross_domain_internal_import(&source_domain, &target_domain, &target, context) {
             violations.push(Violation {
                 rule: RuleCode::Br004,
                 file: record.source_file.clone(),
@@ -119,12 +133,13 @@ fn is_cross_domain_internal_import(
     source_domain: &str,
     target_domain: &str,
     target_path: &str,
+    context: &BoundaryContext,
 ) -> bool {
     if source_domain.is_empty() || target_domain.is_empty() || source_domain == target_domain {
         return false;
     }
 
-    !is_public_api_path(target_domain, target_path)
+    !is_public_api_path(target_domain, target_path, context)
 }
 
 fn is_shared_runtime_dependency(import_path: &str, resolved_target: Option<&str>) -> bool {
@@ -170,10 +185,24 @@ fn is_blocked_workspace_dependency(path: &str) -> bool {
         || path.starts_with("apps/")
 }
 
-fn is_public_api_path(domain: &str, target_path: &str) -> bool {
+fn is_public_api_path(domain: &str, target_path: &str, context: &BoundaryContext) -> bool {
     let normalized_path = normalize_path(target_path);
     let normalized = strip_ts_like_extension(&normalized_path);
+
+    if let Some(manifest) = context.domains.get(domain) {
+        return manifest
+            .public_api
+            .all_paths()
+            .any(|public_path| normalized == normalize_public_api_path(domain, public_path));
+    }
+
     normalized == format!("domains/{domain}/shared/public")
+}
+
+fn normalize_public_api_path(domain: &str, public_path: &str) -> String {
+    let relative = public_path.strip_prefix("./").unwrap_or(public_path);
+    let normalized = normalize_path(&format!("domains/{domain}/{relative}"));
+    strip_ts_like_extension(&normalized).to_string()
 }
 
 fn strip_ts_like_extension(path: &str) -> &str {
@@ -206,6 +235,7 @@ fn normalize_path(input: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use boundra_core::{DomainManifest, PublicApi};
     use boundra_parser::ImportRecord;
 
     #[test]
@@ -328,6 +358,33 @@ mod tests {
         }];
 
         let violations = check_boundaries(&imports);
+        assert!(violations.is_empty());
+    }
+
+    #[test]
+    fn allows_declared_cross_domain_public_api_import() {
+        let imports = vec![ImportRecord {
+            source_file: "domains/order/server/checkout.ts".to_string(),
+            source_dir: "domains/order/server".to_string(),
+            line: 1,
+            import_path: "../../billing/server/public".to_string(),
+        }];
+        let context = BoundaryContext {
+            domains: BTreeMap::from([(
+                "billing".to_string(),
+                DomainManifest {
+                    name: "billing".to_string(),
+                    public_api: PublicApi {
+                        client: Vec::new(),
+                        server: vec!["./server/public.ts".to_string()],
+                        shared: Vec::new(),
+                    },
+                    depends_on: Vec::new(),
+                },
+            )]),
+        };
+
+        let violations = check_boundaries_with_context(&imports, &context);
         assert!(violations.is_empty());
     }
 
