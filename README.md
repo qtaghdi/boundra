@@ -46,7 +46,7 @@ apps/
   admin/
 
 domains/
-  auth/
+  <domain-name>/
     client/
     server/
     shared/
@@ -95,9 +95,10 @@ crates/
 
 ## Current Status
 
-- 저장소 초기화 단계
-- 문서 기조 및 규약 선정 완료
-- Rust 워크스페이스 및 `check-boundaries` MVP( BR-001 / BR-002 ) 스캐폴드 완료
+- Repository bootstrap is complete.
+- Core documentation and conventions are drafted.
+- Rust workspace and `check-boundaries` MVP are available for BR-001 through BR-004.
+- CLI fixture tests cover text/json output and boundary violation behavior.
 
 ## Quick Start (MVP)
 
@@ -107,13 +108,20 @@ crates/
 실행:
 
 ```bash
+cargo run -p boundra-cli -- create-domain order
 cargo run -p boundra-cli -- check-boundaries
+```
+
+Run against an explicit project root:
+
+```bash
+cargo run -p boundra-cli -- check-boundaries --root .
 ```
 
 JSON 출력:
 
 ```bash
-cargo run -p boundra-cli -- check-boundaries --format=json
+cargo run -p boundra-cli -- check-boundaries --format json
 ```
 
 프로젝트 설정:
