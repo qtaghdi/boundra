@@ -4,6 +4,8 @@ use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
 
+use serde::Deserialize;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RuleCode {
     Br001,
@@ -176,49 +178,10 @@ pub fn load_config(root: &Path) -> io::Result<BoundraConfig> {
         return Ok(BoundraConfig::default());
     }
 
-    let content = fs::read_to_string(config_path)?;
-    let mut config = BoundraConfig::default();
+    let content = fs::read_to_string(&config_path)?;
+    let raw = parse_json_file::<RawBoundraConfig>(&config_path, &content)?;
 
-    if let Some(workspace_root) = extract_nested_string(&content, "project", "workspaceRoot") {
-        config.project.workspace_root = workspace_root;
-    }
-
-    if let Some(apps) = extract_nested_string(&content, "paths", "apps") {
-        config.paths.apps = apps;
-    }
-
-    if let Some(domains) = extract_nested_string(&content, "paths", "domains") {
-        config.paths.domains = domains;
-    }
-
-    if let Some(packages) = extract_nested_string(&content, "paths", "packages") {
-        config.paths.packages = packages;
-    }
-
-    if let Some(crates) = extract_nested_string(&content, "paths", "crates") {
-        config.paths.crates = crates;
-    }
-
-    if let Some(manifest_file) = extract_string_field(&content, "manifestFile") {
-        config.domain.manifest_file = manifest_file;
-    }
-
-    if let Some(public_api) = extract_public_api(&content) {
-        config.domain.public_api = public_api;
-    }
-
-    if let Some(check_boundaries) = extract_object(&content, "checkBoundaries") {
-        if let Some(include_extensions) =
-            extract_string_array(check_boundaries, "includeExtensions")
-        {
-            config.check_boundaries.include_extensions = include_extensions;
-        }
-        if let Some(ignore) = extract_string_array(check_boundaries, "ignore") {
-            config.check_boundaries.ignore = ignore;
-        }
-    }
-
-    Ok(config)
+    Ok(raw.into_config())
 }
 
 fn validate_config(root: &Path, config: &BoundraConfig) -> io::Result<()> {
@@ -315,15 +278,9 @@ pub fn load_domain_manifest(
     default_public_api: &PublicApi,
 ) -> io::Result<DomainManifest> {
     let content = fs::read_to_string(path)?;
-    let name = extract_string_field(&content, "name").unwrap_or_else(|| fallback_name.to_string());
-    let public_api = extract_public_api(&content).unwrap_or_else(|| default_public_api.clone());
-    let depends_on = extract_string_array(&content, "dependsOn").unwrap_or_default();
+    let raw = parse_json_file::<RawDomainManifest>(path, &content)?;
 
-    Ok(DomainManifest {
-        name,
-        public_api,
-        depends_on,
-    })
+    Ok(raw.into_manifest(fallback_name, default_public_api))
 }
 
 fn validate_domain_manifest(
@@ -386,80 +343,154 @@ fn validate_public_api_path(path: &str) -> io::Result<()> {
     Ok(())
 }
 
-fn extract_public_api(content: &str) -> Option<PublicApi> {
-    let object = extract_object(content, "publicApi")?;
-    Some(PublicApi {
-        client: extract_string_array(object, "client").unwrap_or_default(),
-        server: extract_string_array(object, "server").unwrap_or_default(),
-        shared: extract_string_array(object, "shared").unwrap_or_default(),
+fn invalid_data<T>(message: impl Into<String>) -> io::Result<T> {
+    Err(io::Error::new(io::ErrorKind::InvalidData, message.into()))
+}
+
+fn parse_json_file<'a, T>(path: &Path, content: &'a str) -> io::Result<T>
+where
+    T: Deserialize<'a>,
+{
+    serde_json::from_str(content).map_err(|err| {
+        io::Error::new(
+            io::ErrorKind::InvalidData,
+            format!("invalid JSON in {}: {err}", display_path(path)),
+        )
     })
 }
 
-fn extract_nested_string(content: &str, object_key: &str, field_key: &str) -> Option<String> {
-    let object = extract_object(content, object_key)?;
-    extract_string_field(object, field_key)
+fn display_path(path: &Path) -> String {
+    path.to_string_lossy().replace('\\', "/")
 }
 
-fn extract_object<'a>(content: &'a str, key: &str) -> Option<&'a str> {
-    let key_index = content.find(&format!("\"{key}\""))?;
-    let after_key = &content[key_index..];
-    let object_start = after_key.find('{')?;
-    let object = &after_key[object_start..];
-    let mut depth = 0;
+#[derive(Debug, Default, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct RawBoundraConfig {
+    project: Option<RawProjectConfig>,
+    paths: Option<RawProjectPaths>,
+    domain: Option<RawDomainDefaults>,
+    check_boundaries: Option<RawCheckBoundariesConfig>,
+}
 
-    for (index, char) in object.char_indices() {
-        match char {
-            '{' => depth += 1,
-            '}' => {
-                depth -= 1;
-                if depth == 0 {
-                    return Some(&object[..=index]);
-                }
+impl RawBoundraConfig {
+    fn into_config(self) -> BoundraConfig {
+        let mut config = BoundraConfig::default();
+
+        if let Some(project) = self.project {
+            if let Some(workspace_root) = project.workspace_root {
+                config.project.workspace_root = workspace_root;
             }
-            _ => {}
+        }
+
+        if let Some(paths) = self.paths {
+            if let Some(apps) = paths.apps {
+                config.paths.apps = apps;
+            }
+            if let Some(domains) = paths.domains {
+                config.paths.domains = domains;
+            }
+            if let Some(packages) = paths.packages {
+                config.paths.packages = packages;
+            }
+            if let Some(crates) = paths.crates {
+                config.paths.crates = crates;
+            }
+        }
+
+        if let Some(domain) = self.domain {
+            if let Some(manifest_file) = domain.manifest_file {
+                config.domain.manifest_file = manifest_file;
+            }
+            if let Some(public_api) = domain.public_api {
+                config.domain.public_api = public_api.into_public_api_with_default(&PublicApi {
+                    client: Vec::new(),
+                    server: Vec::new(),
+                    shared: Vec::new(),
+                });
+            }
+        }
+
+        if let Some(check_boundaries) = self.check_boundaries {
+            if let Some(include_extensions) = check_boundaries.include_extensions {
+                config.check_boundaries.include_extensions = include_extensions;
+            }
+            if let Some(ignore) = check_boundaries.ignore {
+                config.check_boundaries.ignore = ignore;
+            }
+        }
+
+        config
+    }
+}
+
+#[derive(Debug, Default, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct RawProjectConfig {
+    workspace_root: Option<String>,
+}
+
+#[derive(Debug, Default, Deserialize)]
+struct RawProjectPaths {
+    apps: Option<String>,
+    domains: Option<String>,
+    packages: Option<String>,
+    crates: Option<String>,
+}
+
+#[derive(Debug, Default, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct RawDomainDefaults {
+    manifest_file: Option<String>,
+    public_api: Option<RawPublicApi>,
+}
+
+#[derive(Debug, Default, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct RawCheckBoundariesConfig {
+    include_extensions: Option<Vec<String>>,
+    ignore: Option<Vec<String>>,
+}
+
+#[derive(Debug, Default, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct RawDomainManifest {
+    name: Option<String>,
+    public_api: Option<RawPublicApi>,
+    depends_on: Option<Vec<String>>,
+}
+
+impl RawDomainManifest {
+    fn into_manifest(self, fallback_name: &str, default_public_api: &PublicApi) -> DomainManifest {
+        DomainManifest {
+            name: self.name.unwrap_or_else(|| fallback_name.to_string()),
+            public_api: self
+                .public_api
+                .map(|public_api| public_api.into_public_api_with_default(default_public_api))
+                .unwrap_or_else(|| default_public_api.clone()),
+            depends_on: self.depends_on.unwrap_or_default(),
         }
     }
-
-    None
 }
 
-fn extract_string_field(content: &str, key: &str) -> Option<String> {
-    let key_index = content.find(&format!("\"{key}\""))?;
-    let after_key = &content[key_index..];
-    let colon_index = after_key.find(':')?;
-    let after_colon = after_key[colon_index + 1..].trim_start();
-    extract_quoted_string(after_colon)
+#[derive(Debug, Default, Deserialize)]
+struct RawPublicApi {
+    client: Option<Vec<String>>,
+    server: Option<Vec<String>>,
+    shared: Option<Vec<String>>,
 }
 
-fn extract_string_array(content: &str, key: &str) -> Option<Vec<String>> {
-    let key_index = content.find(&format!("\"{key}\""))?;
-    let after_key = &content[key_index..];
-    let array_start = after_key.find('[')?;
-    let array = &after_key[array_start + 1..];
-    let array_end = array.find(']')?;
-    let array_content = &array[..array_end];
-    let mut values = Vec::new();
-    let mut rest = array_content;
-
-    while let Some(start) = rest.find('"') {
-        let after_start = &rest[start + 1..];
-        let Some(end) = after_start.find('"') else {
-            break;
-        };
-        values.push(after_start[..end].to_string());
-        rest = &after_start[end + 1..];
+impl RawPublicApi {
+    fn into_public_api_with_default(self, default_public_api: &PublicApi) -> PublicApi {
+        PublicApi {
+            client: self
+                .client
+                .unwrap_or_else(|| default_public_api.client.clone()),
+            server: self
+                .server
+                .unwrap_or_else(|| default_public_api.server.clone()),
+            shared: self
+                .shared
+                .unwrap_or_else(|| default_public_api.shared.clone()),
+        }
     }
-
-    Some(values)
-}
-
-fn extract_quoted_string(input: &str) -> Option<String> {
-    let start = input.find('"')?;
-    let after_start = &input[start + 1..];
-    let end = after_start.find('"')?;
-    Some(after_start[..end].to_string())
-}
-
-fn invalid_data<T>(message: impl Into<String>) -> io::Result<T> {
-    Err(io::Error::new(io::ErrorKind::InvalidData, message.into()))
 }

@@ -10,20 +10,21 @@ Boundra now has a usable MVP foundation:
 - `domains/<domain>/domain.json` is loaded and validated for name, public API files, and declared dependencies.
 - BR-004 uses manifest-declared `publicApi` entries when available.
 - CLI fixture tests cover boundary output, project roots, scaffolding, manifest validation, and ignored paths.
+- Config and manifest JSON parsing uses `serde` and `serde_json`.
 
-## Priority 1: Replace Ad Hoc JSON Parsing
+## Completed: Replace Ad Hoc JSON Parsing
 
-The current config and manifest loader intentionally parses only the fields needed for the MVP. Move it to structured JSON parsing before expanding the schema.
+The config and manifest loaders now use typed `serde` parsing instead of ad hoc string extraction.
 
-Definition of done:
+Completed:
 
-- Add `serde` and `serde_json` to the Rust workspace.
+- Added `serde` and `serde_json` to `boundra-core`.
 - Parse `boundra.config.json` into typed structs with defaults.
 - Parse `domain.json` into typed structs with defaults.
-- Return clear config errors with file path and field context.
-- Keep existing E2E tests passing.
+- Return invalid JSON errors with file path context.
+- Existing E2E tests pass.
 
-## Priority 2: Stabilize Machine-Readable Output
+## Priority 1: Stabilize Machine-Readable Output
 
 JSON output is still assembled by string printing. It should be produced from typed output structs.
 
@@ -34,7 +35,7 @@ Definition of done:
 - Include `status`, `violations`, and future-safe metadata fields.
 - Add tests that parse CLI JSON output as JSON.
 
-## Priority 3: Improve Import Parsing
+## Priority 2: Improve Import Parsing
 
 The parser is still line-based. It is enough for MVP fixtures, but not enough for real TypeScript projects.
 
@@ -45,7 +46,7 @@ Definition of done:
 - Support dynamic `import(...)`.
 - Decide whether to adopt SWC or keep a lightweight parser for the next milestone.
 
-## Priority 4: Add CI Integration
+## Priority 3: Add CI Integration
 
 The CLI should be easy to run in a repository before Boundra has packaging.
 
@@ -56,7 +57,7 @@ Definition of done:
 - Document expected exit codes.
 - Add a small CI-oriented JSON output example.
 
-## Priority 5: Start Code Generation
+## Priority 4: Start Code Generation
 
 Once config, manifest, and boundary validation are stable, Boundra can move from analyzer to framework workflow.
 

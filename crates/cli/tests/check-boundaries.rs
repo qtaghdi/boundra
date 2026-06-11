@@ -192,6 +192,21 @@ fn check_boundaries_rejects_manifest_name_mismatch() {
 }
 
 #[test]
+fn check_boundaries_rejects_invalid_config_json() {
+    let root = create_temp_dir("invalid-config-json");
+
+    fs::create_dir_all(root.join("domains")).expect("failed to create domains root");
+    fs::write(root.join("boundra.config.json"), "{ invalid json").expect("failed to write config");
+
+    let output = run_boundra(&root, &["check-boundaries"]);
+    let stderr = String::from_utf8_lossy(&output.stderr);
+
+    assert_eq!(output.status.code(), Some(2));
+    assert!(stderr.contains("invalid JSON in"));
+    assert!(stderr.contains("boundra.config.json"));
+}
+
+#[test]
 fn check_boundaries_rejects_unknown_domain_dependency() {
     let root = create_temp_dir("unknown-dependency");
     write_domain_manifest(&root, "billing", "billing", &["accounting"]);
