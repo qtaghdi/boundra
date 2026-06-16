@@ -85,6 +85,7 @@ crates/
 - 경계 규칙: [docs/boundary-rules.md](docs/boundary-rules.md)
 - CLI 명세(v1): [docs/cli-spec-v1.md](docs/cli-spec-v1.md)
 - 설정 명세: [docs/config-spec.md](docs/config-spec.md)
+- CI 연동: [docs/ci-integration.md](docs/ci-integration.md)
 - 네이밍 규약: [docs/naming-convention.md](docs/naming-convention.md)
 - 도메인 매니페스트 명세: [docs/domain-manifest-spec.md](docs/domain-manifest-spec.md)
 - 로드맵: [docs/roadmap.md](docs/roadmap.md)
@@ -98,7 +99,8 @@ crates/
 - Repository bootstrap is complete.
 - Core documentation and conventions are drafted.
 - Rust workspace and `check-boundaries` MVP are available for BR-001 through BR-004.
-- CLI fixture tests cover text/json output and boundary violation behavior.
+- `create-domain`, `graph-domains`, and initial `generate` workflows are available.
+- CLI fixture tests cover text/json output, boundary behavior, scaffolding, graph output, and code generation.
 
 ## Quick Start (MVP)
 
@@ -110,6 +112,8 @@ crates/
 ```bash
 cargo run -p boundra-cli -- create-domain order
 cargo run -p boundra-cli -- check-boundaries
+cargo run -p boundra-cli -- graph-domains --format mermaid
+cargo run -p boundra-cli -- generate route order/create-order
 ```
 
 Run against an explicit project root:
@@ -122,6 +126,12 @@ JSON 출력:
 
 ```bash
 cargo run -p boundra-cli -- check-boundaries --format json
+```
+
+CI 실행:
+
+```bash
+cargo run -p boundra-cli -- check-boundaries --root . --format json
 ```
 
 프로젝트 설정:
