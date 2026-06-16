@@ -60,19 +60,147 @@ pub fn collect_imports_with_options(
             .map(|p| p.to_string_lossy().replace('\\', "/"))
             .unwrap_or_default();
 
-        for (idx, line) in content.lines().enumerate() {
-            if let Some(import_path) = extract_import_path(line) {
-                imports.push(ImportRecord {
-                    source_file: relative.clone(),
-                    source_dir: source_dir.clone(),
-                    line: idx + 1,
-                    import_path,
-                });
-            }
+        for (line, import_path) in extract_imports_from_content(&content) {
+            imports.push(ImportRecord {
+                source_file: relative.clone(),
+                source_dir: source_dir.clone(),
+                line,
+                import_path,
+            });
         }
     }
 
     Ok(imports)
+}
+
+fn extract_imports_from_content(content: &str) -> Vec<(usize, String)> {
+    let mut imports = Vec::new();
+    let mut pending_statement: Option<PendingStatement> = None;
+
+    for (idx, line) in content.lines().enumerate() {
+        let line_number = idx + 1;
+        let trimmed = line.trim();
+
+        if let Some(pending) = pending_statement.as_mut() {
+            pending.statement.push(' ');
+            pending.statement.push_str(trimmed);
+
+            if let Some(import_path) = pending.extract_import_path() {
+                imports.push((pending.start_line, import_path));
+                pending_statement = None;
+            }
+            continue;
+        }
+
+        if starts_static_import_or_export(trimmed) {
+            if let Some(import_path) = extract_static_import_path(trimmed) {
+                imports.push((line_number, import_path));
+            } else {
+                pending_statement = Some(PendingStatement::new(
+                    line_number,
+                    trimmed.to_string(),
+                    PendingStatementKind::Static,
+                ));
+            }
+            continue;
+        }
+
+        if trimmed.contains("require(") {
+            if let Some(import_path) = extract_require_path(trimmed) {
+                imports.push((line_number, import_path));
+            } else {
+                pending_statement = Some(PendingStatement::new(
+                    line_number,
+                    trimmed.to_string(),
+                    PendingStatementKind::RequireCall,
+                ));
+                continue;
+            }
+        }
+
+        if trimmed.contains("import(") {
+            if let Some(import_path) = extract_dynamic_import_path(trimmed) {
+                imports.push((line_number, import_path));
+            } else {
+                pending_statement = Some(PendingStatement::new(
+                    line_number,
+                    trimmed.to_string(),
+                    PendingStatementKind::DynamicImportCall,
+                ));
+            }
+        }
+    }
+
+    imports
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct PendingStatement {
+    start_line: usize,
+    statement: String,
+    kind: PendingStatementKind,
+}
+
+impl PendingStatement {
+    fn new(start_line: usize, statement: String, kind: PendingStatementKind) -> Self {
+        Self {
+            start_line,
+            statement,
+            kind,
+        }
+    }
+
+    fn extract_import_path(&self) -> Option<String> {
+        match self.kind {
+            PendingStatementKind::Static => extract_static_import_path(&self.statement),
+            PendingStatementKind::RequireCall => extract_require_path(&self.statement),
+            PendingStatementKind::DynamicImportCall => extract_dynamic_import_path(&self.statement),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum PendingStatementKind {
+    Static,
+    RequireCall,
+    DynamicImportCall,
+}
+
+fn starts_static_import_or_export(line: &str) -> bool {
+    line.starts_with("import ")
+        || (line.starts_with("export ")
+            && (line.contains(" from ")
+                || line.starts_with("export {")
+                || line.starts_with("export type {")
+                || line.starts_with("export *")))
+}
+
+fn extract_static_import_path(statement: &str) -> Option<String> {
+    let trimmed = statement.trim();
+
+    if starts_static_import_or_export(trimmed) {
+        if let Some(path) = extract_path_after_keyword(trimmed, " from ") {
+            return Some(path);
+        }
+        if trimmed.starts_with("import ") {
+            return extract_first_quoted(trimmed);
+        }
+    }
+
+    None
+}
+
+fn extract_require_path(line: &str) -> Option<String> {
+    extract_path_after_call(line, "require(")
+}
+
+fn extract_dynamic_import_path(line: &str) -> Option<String> {
+    extract_path_after_call(line, "import(")
+}
+
+fn extract_path_after_call(line: &str, needle: &str) -> Option<String> {
+    let (_, rest) = line.split_once(needle)?;
+    extract_first_quoted(rest)
 }
 
 fn collect_ts_like_files(
@@ -140,32 +268,8 @@ fn matches_ignore_pattern(path: &str, pattern: &str) -> bool {
     path == normalized_pattern || path.starts_with(&format!("{normalized_pattern}/"))
 }
 
-fn extract_import_path(line: &str) -> Option<String> {
-    let trimmed = line.trim();
-
-    if trimmed.starts_with("import ") || trimmed.starts_with("export ") {
-        if let Some(path) = extract_path_after_keyword(trimmed, " from ") {
-            return Some(path);
-        }
-        if let Some(path) = extract_first_quoted(trimmed) {
-            return Some(path);
-        }
-    }
-
-    if trimmed.contains("require(") {
-        return extract_path_after_require(trimmed);
-    }
-
-    None
-}
-
 fn extract_path_after_keyword(line: &str, needle: &str) -> Option<String> {
     let (_, rest) = line.split_once(needle)?;
-    extract_first_quoted(rest)
-}
-
-fn extract_path_after_require(line: &str) -> Option<String> {
-    let (_, rest) = line.split_once("require(")?;
     extract_first_quoted(rest)
 }
 
@@ -179,26 +283,69 @@ fn extract_first_quoted(input: &str) -> Option<String> {
 
 #[cfg(test)]
 mod tests {
-    use super::extract_import_path;
+    use super::extract_imports_from_content;
+
+    fn import_paths(content: &str) -> Vec<String> {
+        extract_imports_from_content(content)
+            .into_iter()
+            .map(|(_, import_path)| import_path)
+            .collect()
+    }
 
     #[test]
     fn extracts_from_import_from() {
         let line = "import { x } from './server/usecase'";
-        assert_eq!(
-            extract_import_path(line).as_deref(),
-            Some("./server/usecase")
-        );
+        assert_eq!(import_paths(line), vec!["./server/usecase"]);
     }
 
     #[test]
     fn extracts_from_side_effect_import() {
         let line = "import './polyfill'";
-        assert_eq!(extract_import_path(line).as_deref(), Some("./polyfill"));
+        assert_eq!(import_paths(line), vec!["./polyfill"]);
     }
 
     #[test]
     fn extracts_from_require() {
         let line = "const x = require('../server/x')";
-        assert_eq!(extract_import_path(line).as_deref(), Some("../server/x"));
+        assert_eq!(import_paths(line), vec!["../server/x"]);
+    }
+
+    #[test]
+    fn extracts_from_multiline_import_from() {
+        let content = r#"import {
+  checkout
+} from '../server/checkout';
+"#;
+
+        let imports = extract_imports_from_content(content);
+        assert_eq!(imports, vec![(1, "../server/checkout".to_string())]);
+    }
+
+    #[test]
+    fn extracts_from_multiline_export_from() {
+        let content = r#"export {
+  checkout
+} from '../server/checkout';
+"#;
+
+        let imports = extract_imports_from_content(content);
+        assert_eq!(imports, vec![(1, "../server/checkout".to_string())]);
+    }
+
+    #[test]
+    fn extracts_from_dynamic_import() {
+        let content = "const mod = await import('../server/checkout');";
+        assert_eq!(import_paths(content), vec!["../server/checkout"]);
+    }
+
+    #[test]
+    fn extracts_from_multiline_dynamic_import() {
+        let content = r#"const mod = await import(
+  '../server/checkout'
+);
+"#;
+
+        let imports = extract_imports_from_content(content);
+        assert_eq!(imports, vec![(1, "../server/checkout".to_string())]);
     }
 }
