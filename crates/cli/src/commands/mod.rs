@@ -1,4 +1,7 @@
+#[path = "check-boundaries.rs"]
 pub mod check_boundaries;
+#[path = "create-domain.rs"]
 pub mod create_domain;
 pub mod generate;
+#[path = "graph-domains.rs"]
 pub mod graph_domains;
