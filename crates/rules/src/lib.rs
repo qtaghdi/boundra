@@ -101,13 +101,16 @@ pub fn resolve_import_path_with_context(
     import_path: &str,
     context: &BoundaryContext,
 ) -> Option<String> {
+    // 이미 workspace 기준 경로면 그대로 정규화한다.
     if import_path.starts_with("domains/") {
         return Some(normalize_path(import_path));
     }
+    // 외부 패키지는 None으로 두지만, tsconfig alias는 내부 경로일 수 있으므로 먼저 풀어본다.
     if !import_path.starts_with('.') {
         return resolve_aliased_import_path(import_path, &context.path_aliases);
     }
 
+    // 상대 import는 현재 파일의 디렉터리를 기준으로 workspace 상대 경로로 바꾼다.
     let joined = if source_dir.is_empty() {
         import_path.to_string()
     } else {
@@ -118,6 +121,7 @@ pub fn resolve_import_path_with_context(
 }
 
 fn resolve_aliased_import_path(import_path: &str, path_aliases: &[PathAlias]) -> Option<String> {
+    // alias는 prefix 치환만 한다. 실제 파일 존재 여부는 boundary 판단에 필요하지 않다.
     for alias in path_aliases {
         if let Some(rest) = import_path.strip_prefix(&alias.prefix) {
             return Some(normalize_path(&format!("{}{}", alias.target_prefix, rest)));

@@ -340,6 +340,8 @@ fn load_tsconfig_path_aliases(root: &Path) -> io::Result<Vec<PathAlias>> {
         return Ok(Vec::new());
     }
 
+    // TypeScript의 compilerOptions.paths를 Boundra 내부 경로로 해석하기 위한 준비 단계다.
+    // 예: "@domains/*": ["domains/*"] -> prefix "@domains/", target_prefix "domains/"
     let content = fs::read_to_string(&tsconfig_path)?;
     let raw = parse_json_file::<RawTsConfig>(&tsconfig_path, &content)?;
     let Some(compiler_options) = raw.compiler_options else {
@@ -363,11 +365,14 @@ fn load_tsconfig_path_aliases(root: &Path) -> io::Result<Vec<PathAlias>> {
         }
     }
 
+    // 더 구체적인 alias가 먼저 매칭되도록 긴 prefix를 우선한다.
+    // 예: "@/domains/*"가 "@/*"보다 먼저 처리되어야 한다.
     aliases.sort_by(|left, right| right.prefix.len().cmp(&left.prefix.len()));
     Ok(aliases)
 }
 
 fn normalize_alias_pair(alias: &str, target: &str) -> (String, String) {
+    // paths 패턴의 '*'와 './'를 제거해 단순 prefix 치환 형태로 바꾼다.
     let prefix = alias.strip_suffix('*').unwrap_or(alias).to_string();
     let target_prefix = target
         .strip_prefix("./")

@@ -81,6 +81,8 @@ fn extract_imports_from_content(content: &str) -> Vec<(usize, String)> {
         let line_number = idx + 1;
         let trimmed = line.trim();
 
+        // 여러 줄 import/export/require/import()는 한 줄씩 이어 붙인 뒤
+        // 실제 import path를 찾을 수 있을 때 한 번만 기록한다.
         if let Some(pending) = pending_statement.as_mut() {
             pending.statement.push(' ');
             pending.statement.push_str(trimmed);
@@ -92,6 +94,8 @@ fn extract_imports_from_content(content: &str) -> Vec<(usize, String)> {
             continue;
         }
 
+        // 정적 import/export는 가장 흔한 형태라 먼저 처리한다.
+        // 예: import { x } from './x', export { x } from './x'
         if starts_static_import_or_export(trimmed) {
             if let Some(import_path) = extract_static_import_path(trimmed) {
                 imports.push((line_number, import_path));
@@ -105,6 +109,7 @@ fn extract_imports_from_content(content: &str) -> Vec<(usize, String)> {
             continue;
         }
 
+        // CommonJS require도 boundary 위반을 만들 수 있어서 import처럼 수집한다.
         if trimmed.contains("require(") {
             if let Some(import_path) = extract_require_path(trimmed) {
                 imports.push((line_number, import_path));
@@ -118,6 +123,7 @@ fn extract_imports_from_content(content: &str) -> Vec<(usize, String)> {
             }
         }
 
+        // dynamic import('../x')도 client/server 경계를 우회할 수 있으므로 검사 대상이다.
         if trimmed.contains("import(") {
             if let Some(import_path) = extract_dynamic_import_path(trimmed) {
                 imports.push((line_number, import_path));
@@ -167,6 +173,7 @@ enum PendingStatementKind {
 }
 
 fn starts_static_import_or_export(line: &str) -> bool {
+    // export async function 같은 일반 export는 import path가 없으므로 제외한다.
     line.starts_with("import ")
         || (line.starts_with("export ")
             && (line.contains(" from ")

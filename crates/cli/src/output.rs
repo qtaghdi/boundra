@@ -1,0 +1,84 @@
+use boundra_core::Violation;
+use serde::Serialize;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum OutputFormat {
+    Text,
+    Json,
+}
+
+#[derive(Debug, Serialize)]
+struct CheckBoundariesOutput<'a> {
+    status: &'a str,
+    violations: Vec<ViolationOutput<'a>>,
+    meta: OutputMeta<'a>,
+}
+
+#[derive(Debug, Serialize)]
+struct ViolationOutput<'a> {
+    rule: String,
+    file: &'a str,
+    line: usize,
+    import: &'a str,
+    message: &'a str,
+    suggestion: &'a str,
+}
+
+#[derive(Debug, Serialize)]
+struct OutputMeta<'a> {
+    command: &'a str,
+    violation_count: usize,
+}
+
+pub(crate) fn print_text(violations: &[Violation]) {
+    if violations.is_empty() {
+        println!("check-boundaries: OK (no violations)");
+        return;
+    }
+
+    for violation in violations {
+        println!("[BOUNDARY_VIOLATION] {}", violation.rule);
+        println!("file: {}", violation.file);
+        println!("import: {}", violation.import_path);
+        println!("line: {}", violation.line);
+        println!("message: {}", violation.message);
+        println!("suggestion: {}", violation.suggestion);
+        println!();
+    }
+
+    println!(
+        "check-boundaries: FAILED ({} violation(s))",
+        violations.len()
+    );
+}
+
+pub(crate) fn print_json(violations: &[Violation]) {
+    let status = if violations.is_empty() {
+        "passed"
+    } else {
+        "failed"
+    };
+    let output = CheckBoundariesOutput {
+        status,
+        violations: violations
+            .iter()
+            .map(|violation| ViolationOutput {
+                rule: violation.rule.to_string(),
+                file: &violation.file,
+                line: violation.line,
+                import: &violation.import_path,
+                message: &violation.message,
+                suggestion: &violation.suggestion,
+            })
+            .collect(),
+        meta: OutputMeta {
+            command: "check-boundaries",
+            violation_count: violations.len(),
+        },
+    };
+
+    println!(
+        "{}",
+        serde_json::to_string_pretty(&output).expect("failed to serialize JSON output")
+    );
+}
