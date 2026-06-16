@@ -16,6 +16,7 @@ Boundra now has a usable MVP foundation:
 - `tsconfig.json` path aliases are resolved during boundary checks.
 - `graph-domains` outputs domain dependency graphs as Mermaid, DOT, or JSON.
 - `generate route|query|mutation <domain>/<name>` scaffolds contract-centered stubs.
+- CLI command handlers are split into focused modules for parsing, output, utilities, and command execution.
 
 ## Completed: Replace Ad Hoc JSON Parsing
 
@@ -97,10 +98,23 @@ Completed:
 - Enforce kebab-case for generated resources.
 - Refuse generation when the target domain does not exist.
 
+## Completed: Modularize CLI Internals
+
+The CLI is now split by responsibility so new commands can be added without growing one large file.
+
+Completed:
+
+- Keep `cli.rs` as a thin command router.
+- Move argument parsing to `parsing.rs`.
+- Move boundary output formatting to `output.rs`.
+- Move shared naming/path helpers to `util.rs`.
+- Move command handlers into `commands/`.
+
 ## Next Priority
 
 - Package manager integration.
 - npm binary packaging.
 - Codegen templates backed by schema definitions instead of placeholder contracts.
 - Public API update assistance for generated files.
-- More complete parser backend, likely SWC, for path aliases, comments, and TypeScript syntax edge cases.
+- Help/usage output tests for the modularized CLI.
+- More complete parser backend, likely SWC, for comments and TypeScript syntax edge cases.
