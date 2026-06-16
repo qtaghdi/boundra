@@ -1,55 +1,92 @@
 # Roadmap
 
-## Phase 0: Foundation Design (Now)
+## Phase 0: Foundation Design
 
-- 철학/구조/규칙 문서화
-- CLI와 manifest 명세 고정
-- MVP 범위 잠금
+Status: complete.
 
-## Phase 1: Prototype (MVP)
+Completed:
 
-목표:
+- project charter
+- architecture baseline
+- boundary rules
+- CLI specification
+- config and manifest specs
+- naming convention
+- initial ADR
+
+## Phase 1: Core Tooling MVP
+
+Status: complete.
+
+Completed:
+
 - `create-domain`
 - `check-boundaries`
-- 샘플 도메인 2개
+- BR-001 through BR-004
+- JSON diagnostics and exit codes
+- config and manifest loading
+- CI integration example
+- fixture test coverage
 
-완료 기준:
-- 최소 4개 boundary rule 동작
-- CI에서 위반 시 실패
-- 팀 내 수동 검증 가능
+## Phase 2: Framework Workflow MVP
 
-## Phase 2: Internal Platform
+Status: complete for the first slice.
 
-목표:
+Completed:
+
 - `graph-domains`
-- `generate route/query/mutation`
-- 규칙/진단 강화
+- `generate route|query|mutation`
+- generated contract registration in `domain.json`
+- TypeScript runtime helper surface in `packages/runtime`
+- CLI internals split into modules
 
-완료 기준:
-- 신규 도메인 온보딩 시간 단축
-- 코드 생성 반복 패턴 정착
+Remaining:
 
-## Phase 3: Core Stabilization
+- schema-backed codegen templates
+- stronger generated contract model
+- help/usage output tests
 
-목표:
-- crate 분리 정돈
-- 성능 개선(대형 모노레포 대상)
-- 에러/진단 품질 개선
+## Phase 3: Dogfooding
 
-완료 기준:
-- 분석 속도/메모리 기준 충족
-- 코어 API 안정화
+Status: next.
 
-## Phase 4: External Release
+Goals:
 
-목표:
-- 문서/예제 공개
-- CLI 패키징/배포
-- 빠른 시작 경로 제공
+- use Boundra in a real internal app flow
+- create multiple domains
+- wire generated contracts into an app or package
+- observe missing runtime APIs
+- refine generated file structure before packaging
 
-## Phase 5: MCP Expansion
+Done when:
 
-목표:
-- domain MCP adapter 공식화
-- tool/resource/prompt 규격화
-- 권한 모델 정립
+- normal development can use Boundra without manual manifest editing
+- generated contracts are useful enough to keep
+- repeated friction is captured as concrete issues or docs updates
+
+## Phase 4: Core Stabilization
+
+Goals:
+
+- introduce a stronger parser backend if needed
+- improve diagnostics and suggestions
+- improve performance on larger workspaces
+- stabilize JSON output schemas
+- harden manifest/config schema compatibility
+
+## Phase 5: Extension Design
+
+Goals:
+
+- evaluate Starlark policy/codegen hooks after dogfooding
+- keep Lua as an optional local automation candidate
+- avoid extension runtime before real customization pressure exists
+
+## Phase 6: External Release
+
+Goals:
+
+- decide npm/binary packaging strategy
+- write public quickstart
+- provide examples after dogfooding
+- publish only after CLI commands and generated layouts stabilize

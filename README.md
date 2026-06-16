@@ -54,6 +54,7 @@ domains/
     tests/
 
 packages/
+  runtime/
   ui/
   infra/
   config/
@@ -62,10 +63,7 @@ packages/
 crates/
   core/
   parser/
-  analyzer/
   rules/
-  codegen/
-  graph/
   cli/
 ```
 
@@ -101,7 +99,9 @@ crates/
 - Core documentation and conventions are drafted.
 - Rust workspace and `check-boundaries` MVP are available for BR-001 through BR-004.
 - `create-domain`, `graph-domains`, and initial `generate` workflows are available.
-- CLI fixture tests cover text/json output, boundary behavior, scaffolding, graph output, and code generation.
+- `packages/runtime` provides the first TypeScript helper surface for generated contracts.
+- Generated route/query/mutation contracts are registered in `domain.json` `publicApi.shared`.
+- CLI fixture tests cover text/json output, boundary behavior, scaffolding, graph output, code generation, and manifest updates.
 
 ## Quick Start (MVP)
 
@@ -133,10 +133,4 @@ CI 실행:
 
 ```bash
 cargo run -p boundra-cli -- check-boundaries --root . --format json
-```
-
-프로젝트 설정:
-
-```bash
-cat boundra.config.json
 ```

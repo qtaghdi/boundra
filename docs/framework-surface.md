@@ -68,9 +68,7 @@ Candidate package:
 packages/
   runtime/
     src/
-      route.ts
-      query.ts
-      mutation.ts
+      types.ts
       index.ts
 ```
 

@@ -40,9 +40,11 @@ Boundra 프로젝트의 네이밍 표준은 `kebab-case only`이다.
 예외는 최소화하며 아래만 허용:
 - 규칙 코드: `BR-001` 같은 대문자 코드
 - 언어/플랫폼 고유 문법: TypeScript의 `camelCase` 변수명, `PascalCase` 타입/클래스명
+- Rust 모듈 식별자: `check_boundaries` 같은 `snake_case` 모듈명은 허용
 
 주의:
 - 코드 내부 식별자 네이밍은 언어 관례를 따를 수 있지만, 파일/경로/리소스 이름은 kebab-case를 유지한다.
+- Rust에서 모듈명과 파일명이 충돌하면 파일명은 `kebab-case`로 유지하고 `#[path = "..."]`로 연결한다.
 
 ## 4. Migration Rule
 

@@ -9,3 +9,6 @@
 - Rule Code: 경계 위반 유형 식별 코드(BR-001 등)
 - Analyzer: import graph 및 의존관계를 계산하는 엔진
 - Codegen: 반복적인 보일러플레이트를 계약 기반으로 자동 생성
+- Runtime Surface: generated contracts가 import하는 TypeScript helper API
+- Starlark: future policy/codegen hook DSL candidate
+- Lua: possible later local automation scripting candidate

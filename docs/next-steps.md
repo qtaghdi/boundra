@@ -20,6 +20,7 @@ Boundra now has a usable MVP foundation:
 - The next framework surface is defined as Rust engine plus TypeScript runtime helpers, with Starlark deferred until dogfooding proves the need.
 - `packages/runtime` provides the first pure TypeScript helper types used by generated contracts.
 - Generated route/query/mutation contracts are automatically registered in `domain.json` `publicApi.shared`.
+- Source and documentation filenames follow `kebab-case`; Rust module identifiers use language-native `snake_case` only behind `#[path = "..."]` where needed.
 
 ## Completed: Replace Ad Hoc JSON Parsing
 
@@ -90,7 +91,7 @@ Completed:
 
 ## Completed: Start Code Generation
 
-Once config, manifest, and boundary validation are stable, Boundra can move from analyzer to framework workflow.
+Once config, manifest, and boundary validation are stable, Boundra can move from boundary checker to framework workflow.
 
 Completed:
 
@@ -146,6 +147,18 @@ Completed:
 - Preserve existing public API entries.
 - Avoid duplicate public API entries.
 - Add CLI fixture assertions for manifest updates.
+
+## Completed: Align Docs With MVP State
+
+The documentation now reflects the current core tooling MVP rather than the original plan-only state.
+
+Completed:
+
+- Rewrite the MVP implementation plan as completed status.
+- Update the roadmap around dogfooding before release.
+- Replace draft config and manifest specs with currently supported fields.
+- Document generated public API registration.
+- Clarify kebab-case filename rules for Rust modules.
 
 ## Next Priority
 

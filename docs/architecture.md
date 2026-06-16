@@ -16,6 +16,7 @@ domains/
     tests/
 
 packages/
+  runtime/
   ui/
   infra/
   config/
@@ -24,10 +25,7 @@ packages/
 crates/
   core/
   parser/
-  analyzer/
   rules/
-  codegen/
-  graph/
   cli/
 ```
 
@@ -56,22 +54,23 @@ crates/
 
 - 사용자 레벨: TypeScript
 - 코어 엔진: Rust
-- 브릿지: NAPI-RS
-- 빌드/분석: `tsc --build` + Rust analyzer
+- 브릿지: NAPI-RS (future candidate)
+- 빌드/분석: Rust analyzer CLI first; TypeScript build integration later
 - 모노레포: pnpm (초기), Nx는 선택적 도입
 - 프레임워크 표면: `docs/framework-surface.md`를 따른다.
 
 ## 5. Core Crates Responsibility
 
-- `core`: 공통 타입, 진단 포맷
-- `parser`: 파일/모듈/manifest 인덱싱
-- `analyzer`: import graph, symbol reference
+- `core`: project config, domain manifest, shared diagnostic/domain types
+- `parser`: workspace file scanning and import extraction
 - `rules`: boundary validation
-- `codegen`: route/query/mutation 생성
-- `graph`: domain dependency graph
-- `cli`: 명령어 파싱/실행 진입점
+- `cli`: command parsing, execution, graph output, and code generation
 
-## 6. Expansion Strategy
+## 6. Package Responsibility
+
+- `packages/runtime`: pure TypeScript helper types used by generated contracts
+
+## 7. Expansion Strategy
 
 MCP는 v3 이후 `domains/<domain>/mcp`에서 확장하며, 코어 로직과 분리한다.
 

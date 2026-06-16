@@ -1,39 +1,161 @@
-# Boundra Config Spec (Draft)
+# Boundra Config Spec
 
 ## 1. File Location
 
-- 루트 파일: `boundra.config.json`
+Root file:
+
+```txt
+boundra.config.json
+```
+
+The file is optional. When it is missing, Boundra uses built-in defaults.
 
 ## 2. Purpose
 
-- 프로젝트 구조 경로를 표준화한다.
-- boundary rule 동작/레벨을 선언한다.
-- CLI 동작(`check-boundaries`, `graph-domains`, `codegen`) 기본값을 제공한다.
+`boundra.config.json` defines the project model used by the CLI:
 
-## 3. Top-level Fields
+- workspace and package roots
+- domain root and manifest file name
+- default public API paths for new domains
+- scanner extensions and ignored paths for boundary checks
 
-- `version`: 설정 버전 (현재 `1`)
-- `project`: 프로젝트 메타정보
-- `paths`: 모노레포 주요 루트 경로
-- `domain`: 도메인 레이어/manifest/public API 기본값
-- `naming`: 네이밍 정책 (`kebab-case` 강제)
-- `rules`: BR-001~004 활성화 및 메시지
-- `checkBoundaries`: 검사 대상/출력/종료코드
-- `codegen`: 템플릿 경로
-- `graph`: 그래프 출력 형식
+## 3. Supported Fields
 
-## 4. Validation Rules
+### `project`
 
-- `paths.domains`는 존재해야 한다.
-- `domain.layers`는 `client/server/shared/mcp/tests`를 모두 포함해야 한다.
-- `rules`는 최소 BR-001, BR-002를 활성화해야 한다.
-- `checkBoundaries.exitCodes`는 서로 다른 정수여야 한다.
+```json
+{
+  "project": {
+    "workspaceRoot": "."
+  }
+}
+```
 
-## 5. Backward Compatibility
+Supported:
 
-- `version`이 증가할 때는 이전 버전 마이그레이션 가이드를 제공한다.
-- breaking 변경은 minor가 아닌 major 릴리스에서만 허용한다.
+- `workspaceRoot`: relative workspace root path
 
-## 6. Initial Adoption Note
+### `paths`
 
-현재 CLI MVP는 BR-001/BR-002를 하드코딩 검사하며, 이 설정 파일은 다음 단계에서 파서에 연동한다.
+```json
+{
+  "paths": {
+    "apps": "apps",
+    "domains": "domains",
+    "packages": "packages",
+    "crates": "crates"
+  }
+}
+```
+
+Supported:
+
+- `apps`
+- `domains`
+- `packages`
+- `crates`
+
+All paths must be relative.
+
+### `domain`
+
+```json
+{
+  "domain": {
+    "manifestFile": "domain.json",
+    "publicApi": {
+      "client": ["./client/public.ts"],
+      "server": ["./server/public.ts"],
+      "shared": ["./shared/public.ts"]
+    }
+  }
+}
+```
+
+Supported:
+
+- `manifestFile`: file name only, not a path
+- `publicApi.client`
+- `publicApi.server`
+- `publicApi.shared`
+
+These defaults are used by `create-domain`.
+
+### `checkBoundaries`
+
+```json
+{
+  "checkBoundaries": {
+    "includeExtensions": ["ts", "tsx", "js", "jsx"],
+    "ignore": [
+      "**/node_modules/**",
+      "**/dist/**",
+      "**/build/**",
+      "**/coverage/**",
+      "**/target/**"
+    ]
+  }
+}
+```
+
+Supported:
+
+- `includeExtensions`: file extensions scanned by the parser
+- `ignore`: simple workspace-relative ignore patterns
+
+## 4. Defaults
+
+When no config file is present, Boundra behaves as if the following config exists:
+
+```json
+{
+  "project": {
+    "workspaceRoot": "."
+  },
+  "paths": {
+    "apps": "apps",
+    "domains": "domains",
+    "packages": "packages",
+    "crates": "crates"
+  },
+  "domain": {
+    "manifestFile": "domain.json",
+    "publicApi": {
+      "client": ["./client/public.ts"],
+      "server": ["./server/public.ts"],
+      "shared": ["./shared/public.ts"]
+    }
+  },
+  "checkBoundaries": {
+    "includeExtensions": ["ts", "tsx", "js", "jsx"],
+    "ignore": [
+      "**/node_modules/**",
+      "**/dist/**",
+      "**/build/**",
+      "**/coverage/**",
+      "**/target/**"
+    ]
+  }
+}
+```
+
+## 5. Validation Rules
+
+- configured paths must be relative
+- `paths.domains` must exist for project model loading
+- `domain.manifestFile` must be a file name
+- public API paths must be relative
+- public API paths must not expose `internal`
+- `checkBoundaries.includeExtensions` must not be empty
+
+## 6. Not Yet Supported
+
+The following fields are planned or possible later, but are not implemented in the current CLI:
+
+- `version`
+- `naming`
+- `rules`
+- `codegen`
+- `graph`
+- custom exit codes
+- custom diagnostic messages

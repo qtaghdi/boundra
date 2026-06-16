@@ -10,13 +10,15 @@
 4. [cli-spec-v1.md](cli-spec-v1.md)
 5. [domain-manifest-spec.md](domain-manifest-spec.md)
 6. [config-spec.md](config-spec.md)
-7. [naming-convention.md](naming-convention.md)
+7. [framework-surface.md](framework-surface.md)
+8. [naming-convention.md](naming-convention.md)
 
 ## Planning
 
 - [roadmap.md](roadmap.md)
 - [implementation-plan-mvp.md](implementation-plan-mvp.md)
 - [solo-convention.md](solo-convention.md)
+- [ci-integration.md](ci-integration.md)
 
 ## Vocabulary and Decisions
 
