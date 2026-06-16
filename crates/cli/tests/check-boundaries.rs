@@ -481,6 +481,15 @@ fn generate_route_scaffolds_contract_and_server_route() {
     assert!(contract.contains("import type { BoundraRoute } from '@boundra/runtime';"));
     assert!(contract.contains("export const createInvoiceRoute"));
     assert!(contract.contains("kind: 'route'"));
+
+    let manifest = fs::read_to_string(root.join("domains/billing/domain.json"))
+        .expect("failed to read domain manifest");
+    let manifest_json: Value = serde_json::from_str(&manifest).expect("manifest should be JSON");
+    assert!(manifest_json["publicApi"]["shared"]
+        .as_array()
+        .expect("shared public API should be an array")
+        .iter()
+        .any(|value| value.as_str() == Some("./shared/contracts/create-invoice.ts")));
 }
 
 #[test]
@@ -521,6 +530,20 @@ fn generate_query_and_mutation_scaffold_client_hooks() {
     assert!(mutation_contract.contains("import type { BoundraMutation } from '@boundra/runtime';"));
     assert!(mutation_contract.contains("export const payInvoiceMutation"));
     assert!(mutation_contract.contains("kind: 'mutation'"));
+
+    let manifest = fs::read_to_string(root.join("domains/billing/domain.json"))
+        .expect("failed to read domain manifest");
+    let manifest_json: Value = serde_json::from_str(&manifest).expect("manifest should be JSON");
+    let shared = manifest_json["publicApi"]["shared"]
+        .as_array()
+        .expect("shared public API should be an array");
+
+    assert!(shared
+        .iter()
+        .any(|value| value.as_str() == Some("./shared/contracts/list-invoices.ts")));
+    assert!(shared
+        .iter()
+        .any(|value| value.as_str() == Some("./shared/contracts/pay-invoice.ts")));
 }
 
 #[test]

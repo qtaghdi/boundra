@@ -50,6 +50,10 @@ Input rules:
 Options:
 - `--root <path>` (default: `.`)
 
+Side effects:
+- Generated shared contract files are appended to `domains/<domain>/domain.json` under `publicApi.shared`.
+- Existing `publicApi.shared` entries are preserved and duplicate entries are not added.
+
 ## 2. CLI UX Principles
 
 - Boundary diagnostics include rule code, file, line, import, message, and suggestion.

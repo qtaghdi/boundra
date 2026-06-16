@@ -2,6 +2,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use boundra_core::load_project_model;
+use serde_json::Value;
 
 use crate::util::{camel_case, display_path, pascal_case};
 
@@ -47,6 +48,14 @@ pub(crate) fn run(options: &GenerateOptions) -> i32 {
             return 3;
         }
     };
+    let public_api_path = format!("./shared/contracts/{}.ts", options.name);
+    if let Err(err) = update_domain_manifest_public_api(
+        &domain_root.join(&project.config.domain.manifest_file),
+        &public_api_path,
+    ) {
+        eprintln!("failed to update domain manifest: {err}");
+        return 3;
+    }
 
     println!(
         "generate {}: OK ({}/{})",
@@ -58,6 +67,61 @@ pub(crate) fn run(options: &GenerateOptions) -> i32 {
         println!("created: {}", display_path(&path));
     }
     0
+}
+
+fn update_domain_manifest_public_api(
+    manifest_path: &Path,
+    public_api_path: &str,
+) -> std::io::Result<()> {
+    if !manifest_path.exists() {
+        return Ok(());
+    }
+
+    let content = fs::read_to_string(manifest_path)?;
+    let mut manifest: Value = serde_json::from_str(&content).map_err(|err| {
+        std::io::Error::new(
+            std::io::ErrorKind::InvalidData,
+            format!("invalid JSON in {}: {err}", display_path(manifest_path)),
+        )
+    })?;
+
+    let Some(manifest_object) = manifest.as_object_mut() else {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::InvalidData,
+            "domain manifest must be a JSON object",
+        ));
+    };
+
+    let public_api = manifest_object
+        .entry("publicApi")
+        .or_insert_with(|| Value::Object(serde_json::Map::new()));
+    let Some(public_api_object) = public_api.as_object_mut() else {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::InvalidData,
+            "domain manifest publicApi must be a JSON object",
+        ));
+    };
+
+    let shared = public_api_object
+        .entry("shared")
+        .or_insert_with(|| Value::Array(Vec::new()));
+    let Some(shared_array) = shared.as_array_mut() else {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::InvalidData,
+            "domain manifest publicApi.shared must be an array",
+        ));
+    };
+
+    if !shared_array
+        .iter()
+        .any(|value| value.as_str() == Some(public_api_path))
+    {
+        shared_array.push(Value::String(public_api_path.to_string()));
+    }
+
+    let output =
+        serde_json::to_string_pretty(&manifest).expect("failed to serialize domain manifest");
+    fs::write(manifest_path, format!("{output}\n"))
 }
 
 fn scaffold_generated_artifact(

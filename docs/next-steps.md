@@ -19,6 +19,7 @@ Boundra now has a usable MVP foundation:
 - CLI command handlers are split into focused modules for parsing, output, utilities, and command execution.
 - The next framework surface is defined as Rust engine plus TypeScript runtime helpers, with Starlark deferred until dogfooding proves the need.
 - `packages/runtime` provides the first pure TypeScript helper types used by generated contracts.
+- Generated route/query/mutation contracts are automatically registered in `domain.json` `publicApi.shared`.
 
 ## Completed: Replace Ad Hoc JSON Parsing
 
@@ -135,9 +136,19 @@ Completed:
 - Update generated route/query/mutation contracts to import runtime helper types.
 - Add CLI fixture assertions for runtime-backed generated contracts.
 
+## Completed: Register Generated Public APIs
+
+Code generation now keeps domain manifests in sync with generated shared contracts.
+
+Completed:
+
+- Append generated shared contract paths to `domain.json` `publicApi.shared`.
+- Preserve existing public API entries.
+- Avoid duplicate public API entries.
+- Add CLI fixture assertions for manifest updates.
+
 ## Next Priority
 
 - Codegen templates backed by schema definitions instead of placeholder contracts.
-- Public API update assistance for generated files.
 - Help/usage output tests for the modularized CLI.
 - More complete parser backend, likely SWC, for comments and TypeScript syntax edge cases.
