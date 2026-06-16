@@ -104,6 +104,8 @@ crates/
 - 파일/폴더/브랜치/CLI 리소스 이름은 `kebab-case only`를 적용한다
 - 커밋 메시지는 `<type>(<scope>): <message>` 형식을 사용한다. 예: `config(domain): add commit convention`
 - 커밋 `type`과 `scope`는 `kebab-case only`를 적용한다
+- 브랜치 이름은 `<type>/<scope>` 또는 `<type>/<scope>-<short-description>` 형식을 사용한다. 예: `config/coderabbit`, `feat/cli-schema-codegen`
+- 브랜치 `type`, `scope`, `short-description`은 `kebab-case only`를 적용한다
 
 ## 10. PR Checklist
 

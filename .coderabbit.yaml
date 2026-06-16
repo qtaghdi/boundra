@@ -1,0 +1,49 @@
+reviews:
+  path_instructions:
+    - path: "**/*"
+      instructions: |
+        리뷰 코멘트와 PR 요약은 가능한 한 한국어로 작성한다.
+
+        코드 식별자, 명령어, 파일 경로, rule code, commit type 같은 고정된
+        기술 용어는 원문을 유지해도 된다. 리뷰는 단순 스타일보다 Boundra의
+        도메인 경계, 계약 중심 구조, 문서 우선 원칙을 먼저 확인한다.
+
+    - path: "docs/**"
+      instructions: |
+        문서는 Boundra의 source-of-truth 순서와 비교해서 리뷰한다:
+        `docs/project-charter.md`, `docs/architecture.md`, `docs/boundary-rules.md`,
+        `docs/cli-spec-v1.md`, `docs/domain-manifest-spec.md`, and
+        `docs/naming-convention.md`.
+
+        오래된 설명, 불명확한 MVP 상태, naming convention drift, 현재 CLI/runtime으로
+        뒷받침되지 않는 동작 설명을 우선적으로 지적한다.
+
+    - path: "crates/**"
+      instructions: |
+        Rust tooling 변경은 boundary enforcement 관점에서 먼저 리뷰한다.
+
+        진단 메시지가 가능한 경우 rule code, file, line, actionable suggestion을
+        포함하는지 확인한다. JSON output shape 안정성을 유지하고, dogfooding으로
+        필요성이 증명되기 전에는 speculative abstraction을 추가하지 않는다.
+
+    - path: "packages/**"
+      instructions: |
+        TypeScript runtime helper는 framework surface code로 리뷰한다.
+
+        runtime helper는 작고 순수하며 contract-centered여야 한다. 자체 JS runtime,
+        bundler, UI framework, ORM, state manager, test runner를 도입하지 않는다.
+
+    - path: "domains/**"
+      instructions: |
+        도메인 코드는 hard boundary rules 위반 여부를 먼저 리뷰한다:
+        BR-001은 `client -> server`를 금지하고, BR-002는 `server -> client`를
+        금지하며, BR-003은 `shared`를 순수하게 유지하고, BR-004는 cross-domain
+        import를 manifest-declared public API로만 허용한다.
+
+    - path: ".github/workflows/**"
+      instructions: |
+        CI 변경은 Boundra checks가 재현 가능하게 실행되는지 중심으로 리뷰한다.
+
+        merge 전 `cargo test`와
+        `cargo run -p boundra-cli -- check-boundaries --root .`가 실행되는 구성을
+        선호한다.
