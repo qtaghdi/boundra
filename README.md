@@ -85,6 +85,7 @@ crates/
 - 경계 규칙: [docs/boundary-rules.md](docs/boundary-rules.md)
 - CLI 명세(v1): [docs/cli-spec-v1.md](docs/cli-spec-v1.md)
 - 설정 명세: [docs/config-spec.md](docs/config-spec.md)
+- 프레임워크 표면: [docs/framework-surface.md](docs/framework-surface.md)
 - CI 연동: [docs/ci-integration.md](docs/ci-integration.md)
 - 네이밍 규약: [docs/naming-convention.md](docs/naming-convention.md)
 - 도메인 매니페스트 명세: [docs/domain-manifest-spec.md](docs/domain-manifest-spec.md)

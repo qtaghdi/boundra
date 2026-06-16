@@ -59,6 +59,7 @@ crates/
 - 브릿지: NAPI-RS
 - 빌드/분석: `tsc --build` + Rust analyzer
 - 모노레포: pnpm (초기), Nx는 선택적 도입
+- 프레임워크 표면: `docs/framework-surface.md`를 따른다.
 
 ## 5. Core Crates Responsibility
 
@@ -73,3 +74,5 @@ crates/
 ## 6. Expansion Strategy
 
 MCP는 v3 이후 `domains/<domain>/mcp`에서 확장하며, 코어 로직과 분리한다.
+
+확장 DSL은 실제 dogfooding 이후 검토한다. 코어 확장은 Lua보다 Starlark를 우선 후보로 둔다.

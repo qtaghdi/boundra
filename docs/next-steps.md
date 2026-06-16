@@ -17,6 +17,8 @@ Boundra now has a usable MVP foundation:
 - `graph-domains` outputs domain dependency graphs as Mermaid, DOT, or JSON.
 - `generate route|query|mutation <domain>/<name>` scaffolds contract-centered stubs.
 - CLI command handlers are split into focused modules for parsing, output, utilities, and command execution.
+- The next framework surface is defined as Rust engine plus TypeScript runtime helpers, with Starlark deferred until dogfooding proves the need.
+- `packages/runtime` provides the first pure TypeScript helper types used by generated contracts.
 
 ## Completed: Replace Ad Hoc JSON Parsing
 
@@ -110,10 +112,31 @@ Completed:
 - Move shared naming/path helpers to `util.rs`.
 - Move command handlers into `commands/`.
 
+## Completed: Define Framework Surface Direction
+
+Boundra's next layer is now documented as a TypeScript-facing framework surface rather than an immediate plugin language.
+
+Completed:
+
+- Keep Rust responsible for deterministic tooling.
+- Make TypeScript the application-facing runtime/helper layer.
+- Defer Starlark/Lua until real project dogfooding exposes customization needs.
+- Prefer Starlark over Lua for future core policy/codegen hooks.
+- Define `packages/runtime` as the next implementation slice.
+
+## Completed: Add TypeScript Runtime Surface
+
+Generated contracts now target a small TypeScript runtime package instead of standalone placeholder types only.
+
+Completed:
+
+- Add `packages/runtime` as a private TypeScript package.
+- Define `BoundraRoute`, `BoundraQuery`, and `BoundraMutation` helper types.
+- Update generated route/query/mutation contracts to import runtime helper types.
+- Add CLI fixture assertions for runtime-backed generated contracts.
+
 ## Next Priority
 
-- Package manager integration.
-- npm binary packaging.
 - Codegen templates backed by schema definitions instead of placeholder contracts.
 - Public API update assistance for generated files.
 - Help/usage output tests for the modularized CLI.

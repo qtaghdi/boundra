@@ -84,7 +84,9 @@ fn scaffold_generated_artifact(
             write_new_file(
                 &contract_path,
                 &format!(
-                    "export type {type_name}Input = Record<string, never>;\nexport type {type_name}Result = Record<string, never>;\n"
+                    "import type {{ BoundraRoute }} from '@boundra/runtime';\n\nexport type {type_name}Input = Record<string, never>;\nexport type {type_name}Result = Record<string, never>;\n\nexport const {function_name}Route: BoundraRoute<{type_name}Input, {type_name}Result> = {{\n  kind: 'route',\n  name: '{name}',\n}};\n",
+                    name = options.name,
+                    function_name = camel_case(&options.name)
                 ),
             )?;
             write_new_file(
@@ -112,7 +114,9 @@ fn scaffold_generated_artifact(
             write_new_file(
                 &contract_path,
                 &format!(
-                    "export type {type_name}QueryInput = Record<string, never>;\nexport type {type_name}QueryResult = Record<string, never>;\n"
+                    "import type {{ BoundraQuery }} from '@boundra/runtime';\n\nexport type {type_name}QueryInput = Record<string, never>;\nexport type {type_name}QueryResult = Record<string, never>;\n\nexport const {function_name}Query: BoundraQuery<{type_name}QueryInput, {type_name}QueryResult> = {{\n  kind: 'query',\n  name: '{name}',\n}};\n",
+                    name = options.name,
+                    function_name = camel_case(&options.name)
                 ),
             )?;
             write_new_file(
@@ -139,7 +143,9 @@ fn scaffold_generated_artifact(
             write_new_file(
                 &contract_path,
                 &format!(
-                    "export type {type_name}MutationInput = Record<string, never>;\nexport type {type_name}MutationResult = Record<string, never>;\n"
+                    "import type {{ BoundraMutation }} from '@boundra/runtime';\n\nexport type {type_name}MutationInput = Record<string, never>;\nexport type {type_name}MutationResult = Record<string, never>;\n\nexport const {function_name}Mutation: BoundraMutation<{type_name}MutationInput, {type_name}MutationResult> = {{\n  kind: 'mutation',\n  name: '{name}',\n}};\n",
+                    name = options.name,
+                    function_name = camel_case(&options.name)
                 ),
             )?;
             write_new_file(

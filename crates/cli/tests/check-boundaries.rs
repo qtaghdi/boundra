@@ -474,6 +474,13 @@ fn generate_route_scaffolds_contract_and_server_route() {
     assert!(root
         .join("domains/billing/server/routes/create-invoice.ts")
         .exists());
+
+    let contract =
+        fs::read_to_string(root.join("domains/billing/shared/contracts/create-invoice.ts"))
+            .expect("failed to read generated route contract");
+    assert!(contract.contains("import type { BoundraRoute } from '@boundra/runtime';"));
+    assert!(contract.contains("export const createInvoiceRoute"));
+    assert!(contract.contains("kind: 'route'"));
 }
 
 #[test]
@@ -500,6 +507,20 @@ fn generate_query_and_mutation_scaffold_client_hooks() {
     assert!(root
         .join("domains/billing/shared/contracts/pay-invoice.ts")
         .exists());
+
+    let query_contract =
+        fs::read_to_string(root.join("domains/billing/shared/contracts/list-invoices.ts"))
+            .expect("failed to read generated query contract");
+    let mutation_contract =
+        fs::read_to_string(root.join("domains/billing/shared/contracts/pay-invoice.ts"))
+            .expect("failed to read generated mutation contract");
+
+    assert!(query_contract.contains("import type { BoundraQuery } from '@boundra/runtime';"));
+    assert!(query_contract.contains("export const listInvoicesQuery"));
+    assert!(query_contract.contains("kind: 'query'"));
+    assert!(mutation_contract.contains("import type { BoundraMutation } from '@boundra/runtime';"));
+    assert!(mutation_contract.contains("export const payInvoiceMutation"));
+    assert!(mutation_contract.contains("kind: 'mutation'"));
 }
 
 #[test]
