@@ -1,0 +1,40 @@
+reviews:
+  path_instructions:
+    - path: "docs/**"
+      instructions: |
+        Review documentation against Boundra's source-of-truth order:
+        `docs/project-charter.md`, `docs/architecture.md`, `docs/boundary-rules.md`,
+        `docs/cli-spec-v1.md`, `docs/domain-manifest-spec.md`, and
+        `docs/naming-convention.md`.
+
+        Flag outdated claims, unclear MVP status, naming convention drift, and any
+        behavior described in docs that is not backed by the current CLI/runtime.
+
+    - path: "crates/**"
+      instructions: |
+        Review Rust tooling changes with boundary enforcement first.
+
+        Check that diagnostics include a rule code, file, line, and actionable
+        suggestion where applicable. Preserve stable JSON output shapes and avoid
+        adding speculative abstractions before dogfooding proves the need.
+
+    - path: "packages/**"
+      instructions: |
+        Review TypeScript runtime helpers as framework surface code.
+
+        Keep runtime helpers small, pure, and contract-centered. Avoid introducing
+        a custom runtime, bundler, UI framework, ORM, state manager, or test runner.
+
+    - path: "domains/**"
+      instructions: |
+        Review domain code for hard boundary rules:
+        BR-001 forbids `client -> server`, BR-002 forbids `server -> client`,
+        BR-003 keeps `shared` pure, and BR-004 allows cross-domain imports only
+        through manifest-declared public APIs.
+
+    - path: ".github/workflows/**"
+      instructions: |
+        Review CI changes for reproducible Boundra checks.
+
+        Prefer commands that run `cargo test` and
+        `cargo run -p boundra-cli -- check-boundaries --root .` before merge.
