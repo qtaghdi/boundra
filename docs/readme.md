@@ -17,6 +17,7 @@
 
 - [roadmap.md](roadmap.md)
 - [implementation-plan-mvp.md](implementation-plan-mvp.md)
+- [dogfooding-notes.md](dogfooding-notes.md)
 - [solo-convention.md](solo-convention.md)
 - [ci-integration.md](ci-integration.md)
 
