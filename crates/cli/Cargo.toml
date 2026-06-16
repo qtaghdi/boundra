@@ -7,6 +7,8 @@ edition = "2021"
 boundra-core = { path = "../core" }
 boundra-parser = { path = "../parser" }
 boundra-rules = { path = "../rules" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
 
 [[bin]]
 name = "boundra"

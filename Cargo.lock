@@ -9,6 +9,8 @@ dependencies = [
  "boundra-core",
  "boundra-parser",
  "boundra-rules",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

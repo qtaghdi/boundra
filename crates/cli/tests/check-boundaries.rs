@@ -3,6 +3,8 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
 use std::time::{SystemTime, UNIX_EPOCH};
 
+use serde_json::Value;
+
 fn run_boundra(root: &Path, args: &[&str]) -> Output {
     Command::new(env!("CARGO_BIN_EXE_boundra"))
         .args(args)
@@ -30,6 +32,10 @@ fn create_fixture(name: &str) -> PathBuf {
     fs::create_dir_all(root.join("domains/auth/shared")).expect("failed to create auth shared");
 
     root
+}
+
+fn parse_json_stdout(output: &Output) -> Value {
+    serde_json::from_slice(&output.stdout).expect("stdout should be valid JSON")
 }
 
 fn write_domain_manifest(root: &Path, domain: &str, name: &str, depends_on: &[&str]) {
@@ -98,11 +104,13 @@ fn check_boundaries_accepts_space_separated_json_format() {
     .expect("failed to write fixture file");
 
     let output = run_boundra(&root, &["check-boundaries", "--format", "json"]);
-    let stdout = String::from_utf8_lossy(&output.stdout);
+    let json = parse_json_stdout(&output);
 
     assert_eq!(output.status.code(), Some(0));
-    assert!(stdout.contains("\"status\": \"passed\""));
-    assert!(stdout.contains("\"violations\": ["));
+    assert_eq!(json["status"], "passed");
+    assert_eq!(json["violations"].as_array().map(Vec::len), Some(0));
+    assert_eq!(json["meta"]["command"], "check-boundaries");
+    assert_eq!(json["meta"]["violation_count"], 0);
 }
 
 #[test]
@@ -128,6 +136,58 @@ fn check_boundaries_accepts_root_option() {
     assert_eq!(output.status.code(), Some(1));
     assert!(stdout.contains("[BOUNDARY_VIOLATION] BR-001"));
     assert!(stdout.contains("file: domains/order/client/use-order.ts"));
+}
+
+#[test]
+fn check_boundaries_detects_multiline_import_violation() {
+    let root = create_fixture("multiline-import");
+
+    fs::write(
+        root.join("domains/order/client/use-order.ts"),
+        r#"import {
+  checkout
+} from '../server/checkout';
+"#,
+    )
+    .expect("failed to write fixture file");
+    fs::write(
+        root.join("domains/order/server/checkout.ts"),
+        "export {};\n",
+    )
+    .expect("failed to write fixture file");
+
+    let output = run_boundra(&root, &["check-boundaries", "--format", "json"]);
+    let json = parse_json_stdout(&output);
+
+    assert_eq!(output.status.code(), Some(1));
+    assert_eq!(json["violations"][0]["rule"], "BR-001");
+    assert_eq!(json["violations"][0]["line"], 1);
+}
+
+#[test]
+fn check_boundaries_detects_dynamic_import_violation() {
+    let root = create_fixture("dynamic-import");
+
+    fs::write(
+        root.join("domains/order/client/use-order.ts"),
+        r#"export async function loadCheckout() {
+  return import('../server/checkout');
+}
+"#,
+    )
+    .expect("failed to write fixture file");
+    fs::write(
+        root.join("domains/order/server/checkout.ts"),
+        "export {};\n",
+    )
+    .expect("failed to write fixture file");
+
+    let output = run_boundra(&root, &["check-boundaries", "--format", "json"]);
+    let json = parse_json_stdout(&output);
+
+    assert_eq!(output.status.code(), Some(1));
+    assert_eq!(json["violations"][0]["rule"], "BR-001");
+    assert_eq!(json["violations"][0]["line"], 2);
 }
 
 #[test]
@@ -297,11 +357,13 @@ fn check_boundaries_accepts_equals_json_format() {
     .expect("failed to write fixture file");
 
     let output = run_boundra(&root, &["check-boundaries", "--format=json"]);
-    let stdout = String::from_utf8_lossy(&output.stdout);
+    let json = parse_json_stdout(&output);
 
     assert_eq!(output.status.code(), Some(1));
-    assert!(stdout.contains("\"status\": \"failed\""));
-    assert!(stdout.contains("\"rule\": \"BR-004\""));
+    assert_eq!(json["status"], "failed");
+    assert_eq!(json["violations"][0]["rule"], "BR-004");
+    assert_eq!(json["meta"]["command"], "check-boundaries");
+    assert_eq!(json["meta"]["violation_count"], 1);
 }
 
 #[test]
@@ -313,4 +375,142 @@ fn check_boundaries_rejects_invalid_format() {
 
     assert_eq!(output.status.code(), Some(2));
     assert!(stderr.contains("invalid --format value: yaml"));
+}
+
+#[test]
+fn check_boundaries_resolves_tsconfig_path_aliases() {
+    let root = create_fixture("path-aliases");
+
+    fs::write(
+        root.join("tsconfig.json"),
+        r#"{
+  "compilerOptions": {
+    "paths": {
+      "@domains/*": ["domains/*"]
+    }
+  }
+}
+"#,
+    )
+    .expect("failed to write tsconfig");
+    fs::write(
+        root.join("domains/order/client/use-order.ts"),
+        "import { checkout } from '@domains/order/server/checkout';\n",
+    )
+    .expect("failed to write fixture file");
+    fs::write(
+        root.join("domains/order/server/checkout.ts"),
+        "export {};\n",
+    )
+    .expect("failed to write fixture file");
+
+    let output = run_boundra(&root, &["check-boundaries", "--format", "json"]);
+    let json = parse_json_stdout(&output);
+
+    assert_eq!(output.status.code(), Some(1));
+    assert_eq!(json["violations"][0]["rule"], "BR-001");
+}
+
+#[test]
+fn graph_domains_outputs_json_dependency_graph() {
+    let root = create_temp_dir("graph-json");
+    write_domain_manifest(&root, "billing", "billing", &[]);
+    write_domain_manifest(&root, "order", "order", &["billing"]);
+
+    let output = run_boundra(&root, &["graph-domains", "--format", "json"]);
+    let json = parse_json_stdout(&output);
+
+    assert_eq!(output.status.code(), Some(0));
+    assert_eq!(json["meta"]["command"], "graph-domains");
+    assert_eq!(json["meta"]["domain_count"], 2);
+    assert_eq!(json["meta"]["edge_count"], 1);
+    assert_eq!(json["edges"][0]["from"], "order");
+    assert_eq!(json["edges"][0]["to"], "billing");
+}
+
+#[test]
+fn graph_domains_writes_output_file() {
+    let root = create_temp_dir("graph-output");
+    let output_path = root.join("artifacts/domain-graph.md");
+    let output_arg = output_path.to_string_lossy().to_string();
+
+    write_domain_manifest(&root, "billing", "billing", &[]);
+    write_domain_manifest(&root, "order", "order", &["billing"]);
+
+    let output = run_boundra(
+        &root,
+        &[
+            "graph-domains",
+            "--format",
+            "mermaid",
+            "--output",
+            &output_arg,
+        ],
+    );
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let graph = fs::read_to_string(output_path).expect("failed to read graph output");
+
+    assert_eq!(output.status.code(), Some(0));
+    assert!(stdout.contains("graph-domains: OK"));
+    assert!(graph.contains("graph TD"));
+    assert!(graph.contains("order --> billing"));
+}
+
+#[test]
+fn generate_route_scaffolds_contract_and_server_route() {
+    let root = create_temp_dir("generate-route");
+
+    let create_output = run_boundra(&root, &["create-domain", "billing"]);
+    assert_eq!(create_output.status.code(), Some(0));
+
+    let output = run_boundra(&root, &["generate", "route", "billing/create-invoice"]);
+    let stdout = String::from_utf8_lossy(&output.stdout);
+
+    assert_eq!(output.status.code(), Some(0));
+    assert!(stdout.contains("generate route: OK (billing/create-invoice)"));
+    assert!(root
+        .join("domains/billing/shared/contracts/create-invoice.ts")
+        .exists());
+    assert!(root
+        .join("domains/billing/server/routes/create-invoice.ts")
+        .exists());
+}
+
+#[test]
+fn generate_query_and_mutation_scaffold_client_hooks() {
+    let root = create_temp_dir("generate-client-hooks");
+
+    let create_output = run_boundra(&root, &["create-domain", "billing"]);
+    assert_eq!(create_output.status.code(), Some(0));
+
+    let query_output = run_boundra(&root, &["generate", "query", "billing/list-invoices"]);
+    let mutation_output = run_boundra(&root, &["generate", "mutation", "billing/pay-invoice"]);
+
+    assert_eq!(query_output.status.code(), Some(0));
+    assert_eq!(mutation_output.status.code(), Some(0));
+    assert!(root
+        .join("domains/billing/client/queries/use-list-invoices.ts")
+        .exists());
+    assert!(root
+        .join("domains/billing/client/mutations/use-pay-invoice.ts")
+        .exists());
+    assert!(root
+        .join("domains/billing/shared/contracts/list-invoices.ts")
+        .exists());
+    assert!(root
+        .join("domains/billing/shared/contracts/pay-invoice.ts")
+        .exists());
+}
+
+#[test]
+fn generate_rejects_unknown_domain() {
+    let root = create_temp_dir("generate-unknown-domain");
+
+    fs::create_dir_all(root.join("domains")).expect("failed to create domains root");
+
+    let output = run_boundra(&root, &["generate", "query", "billing/invoices"]);
+    let stderr = String::from_utf8_lossy(&output.stderr);
+
+    assert_eq!(output.status.code(), Some(2));
+    assert!(stderr.contains("unknown domain: billing"));
 }

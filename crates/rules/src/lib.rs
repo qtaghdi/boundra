@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use boundra_core::{DomainManifest, Layer, RuleCode, Violation};
+use boundra_core::{DomainManifest, Layer, PathAlias, RuleCode, Violation};
 use boundra_parser::ImportRecord;
 
 pub fn check_boundaries(imports: &[ImportRecord]) -> Vec<Violation> {
@@ -10,6 +10,7 @@ pub fn check_boundaries(imports: &[ImportRecord]) -> Vec<Violation> {
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct BoundaryContext {
     pub domains: BTreeMap<String, DomainManifest>,
+    pub path_aliases: Vec<PathAlias>,
 }
 
 pub fn check_boundaries_with_context(
@@ -26,7 +27,8 @@ pub fn check_boundaries_with_context(
                 (domain, layer)
             });
 
-        let resolved_target = resolve_import_path(&record.source_dir, &record.import_path);
+        let resolved_target =
+            resolve_import_path_with_context(&record.source_dir, &record.import_path, context);
 
         if source_layer == Layer::Shared
             && is_shared_runtime_dependency(&record.import_path, resolved_target.as_deref())
@@ -91,11 +93,19 @@ pub fn check_boundaries_with_context(
 }
 
 pub fn resolve_import_path(source_dir: &str, import_path: &str) -> Option<String> {
+    resolve_import_path_with_context(source_dir, import_path, &BoundaryContext::default())
+}
+
+pub fn resolve_import_path_with_context(
+    source_dir: &str,
+    import_path: &str,
+    context: &BoundaryContext,
+) -> Option<String> {
     if import_path.starts_with("domains/") {
         return Some(normalize_path(import_path));
     }
     if !import_path.starts_with('.') {
-        return None;
+        return resolve_aliased_import_path(import_path, &context.path_aliases);
     }
 
     let joined = if source_dir.is_empty() {
@@ -105,6 +115,16 @@ pub fn resolve_import_path(source_dir: &str, import_path: &str) -> Option<String
     };
 
     Some(normalize_path(&joined))
+}
+
+fn resolve_aliased_import_path(import_path: &str, path_aliases: &[PathAlias]) -> Option<String> {
+    for alias in path_aliases {
+        if let Some(rest) = import_path.strip_prefix(&alias.prefix) {
+            return Some(normalize_path(&format!("{}{}", alias.target_prefix, rest)));
+        }
+    }
+
+    None
 }
 
 fn parse_domain_path(path: &str) -> Option<(String, Layer)> {
@@ -382,6 +402,7 @@ mod tests {
                     depends_on: Vec::new(),
                 },
             )]),
+            path_aliases: Vec::new(),
         };
 
         let violations = check_boundaries_with_context(&imports, &context);
@@ -399,5 +420,26 @@ mod tests {
 
         let violations = check_boundaries(&imports);
         assert!(violations.is_empty());
+    }
+
+    #[test]
+    fn detects_alias_resolved_boundary_violation() {
+        let imports = vec![ImportRecord {
+            source_file: "domains/order/client/use-order.ts".to_string(),
+            source_dir: "domains/order/client".to_string(),
+            line: 1,
+            import_path: "@domains/order/server/checkout".to_string(),
+        }];
+        let context = BoundaryContext {
+            domains: BTreeMap::new(),
+            path_aliases: vec![PathAlias {
+                prefix: "@domains/".to_string(),
+                target_prefix: "domains/".to_string(),
+            }],
+        };
+
+        let violations = check_boundaries_with_context(&imports, &context);
+        assert_eq!(violations.len(), 1);
+        assert_eq!(violations[0].rule, RuleCode::Br001);
     }
 }

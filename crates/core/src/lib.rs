@@ -56,6 +56,7 @@ pub struct ProjectModel {
     pub root: PathBuf,
     pub config: BoundraConfig,
     pub domains: BTreeMap<String, DomainManifest>,
+    pub path_aliases: Vec<PathAlias>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -103,6 +104,12 @@ pub struct PublicApi {
 pub struct CheckBoundariesConfig {
     pub include_extensions: Vec<String>,
     pub ignore: Vec<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PathAlias {
+    pub prefix: String,
+    pub target_prefix: String,
 }
 
 impl PublicApi {
@@ -164,11 +171,13 @@ pub fn load_project_model(root: &Path) -> io::Result<ProjectModel> {
     let config = load_config(root)?;
     validate_config(root, &config)?;
     let domains = load_domain_manifests(root, &config)?;
+    let path_aliases = load_tsconfig_path_aliases(root)?;
 
     Ok(ProjectModel {
         root: root.to_path_buf(),
         config,
         domains,
+        path_aliases,
     })
 }
 
@@ -325,6 +334,51 @@ fn validate_domain_dependencies(domains: &BTreeMap<String, DomainManifest>) -> i
     Ok(())
 }
 
+fn load_tsconfig_path_aliases(root: &Path) -> io::Result<Vec<PathAlias>> {
+    let tsconfig_path = root.join("tsconfig.json");
+    if !tsconfig_path.exists() {
+        return Ok(Vec::new());
+    }
+
+    let content = fs::read_to_string(&tsconfig_path)?;
+    let raw = parse_json_file::<RawTsConfig>(&tsconfig_path, &content)?;
+    let Some(compiler_options) = raw.compiler_options else {
+        return Ok(Vec::new());
+    };
+    let Some(paths) = compiler_options.paths else {
+        return Ok(Vec::new());
+    };
+
+    let mut aliases = Vec::new();
+    for (alias, targets) in paths {
+        let Some(target) = targets.first() else {
+            continue;
+        };
+        let (prefix, target_prefix) = normalize_alias_pair(&alias, target);
+        if !prefix.is_empty() {
+            aliases.push(PathAlias {
+                prefix,
+                target_prefix,
+            });
+        }
+    }
+
+    aliases.sort_by(|left, right| right.prefix.len().cmp(&left.prefix.len()));
+    Ok(aliases)
+}
+
+fn normalize_alias_pair(alias: &str, target: &str) -> (String, String) {
+    let prefix = alias.strip_suffix('*').unwrap_or(alias).to_string();
+    let target_prefix = target
+        .strip_prefix("./")
+        .unwrap_or(target)
+        .strip_suffix('*')
+        .unwrap_or_else(|| target.strip_prefix("./").unwrap_or(target))
+        .to_string();
+
+    (prefix, target_prefix)
+}
+
 fn validate_public_api_path(path: &str) -> io::Result<()> {
     if path.is_empty() {
         return invalid_data("public API path must not be empty");
@@ -457,6 +511,17 @@ struct RawDomainManifest {
     name: Option<String>,
     public_api: Option<RawPublicApi>,
     depends_on: Option<Vec<String>>,
+}
+
+#[derive(Debug, Default, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct RawTsConfig {
+    compiler_options: Option<RawCompilerOptions>,
+}
+
+#[derive(Debug, Default, Deserialize)]
+struct RawCompilerOptions {
+    paths: Option<BTreeMap<String, Vec<String>>>,
 }
 
 impl RawDomainManifest {
