@@ -34,6 +34,8 @@ README.
 - CLI release targets: Linux x64, macOS x64/arm64, Windows x64
 
 The runtime is package-manager agnostic after publication.
+Runtime compatibility jobs use npm so the pnpm 11 development-tool requirement
+does not incorrectly raise the runtime's minimum Node.js version.
 
 ## 3. Runtime Package Contract
 

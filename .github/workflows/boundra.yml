@@ -32,10 +32,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
-      - run: corepack enable
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter @boundra/runtime build
-      - run: pnpm test-runtime
+      - run: npm install
+      - run: npm exec tsc -- -p packages/runtime/tsconfig.build.json
+      - run: npm run test-runtime
 
   verify-cli-platforms:
     strategy:
