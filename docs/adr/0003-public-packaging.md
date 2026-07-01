@@ -19,7 +19,7 @@ interface and target matrix have stabilized.
 - Keep Zod out of the runtime dependency graph; generated applications install
   Zod because generated contract source imports it directly.
 - Distribute the `boundra` CLI as native archives attached to GitHub Releases.
-- Support `cargo install --git <repository> --package boundra-cli` as a source
+- Support `cargo install --git <repository> boundra-cli` as a source
   installation fallback during the public preview.
 - Do not publish the internal Rust crates to crates.io in the first preview.
 - Synchronize runtime and CLI preview versions under one `v<semver>` release

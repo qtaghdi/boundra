@@ -2,6 +2,11 @@
 
 ## 1. Release Units
 
+The workspace root package named `boundra` is not a release unit. It must keep
+`private: true` and reject direct `npm publish` attempts. The unscoped package
+name is reserved for a possible future CLI installer and must not contain a
+repository snapshot.
+
 ### `@boundra/runtime`
 
 Public npm package containing:

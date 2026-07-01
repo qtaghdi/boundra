@@ -7,6 +7,7 @@
   "scripts": {
     "check-release-version": "node scripts/check-release-version.mjs",
     "dogfood": "node --import tsx apps/dogfood/src/index.ts",
+    "prepublishOnly": "node scripts/reject-root-publish.mjs",
     "test-runtime": "node --import tsx packages/runtime/tests/runtime-test.ts",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "verify-clean-room": "node scripts/verify-clean-room.mjs",

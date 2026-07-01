@@ -24,7 +24,7 @@ boundra --help
 With a stable Rust toolchain:
 
 ```bash
-cargo install --git https://github.com/qtaghdi/boundra --package boundra-cli
+cargo install --git https://github.com/qtaghdi/boundra boundra-cli
 ```
 
 The native release is preferred because it does not require a Rust toolchain.
