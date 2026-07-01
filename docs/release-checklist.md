@@ -19,7 +19,7 @@
 - [x] online clean-room installation passes in GitHub Actions
 - [x] Node.js 20, 22, and 24 runtime jobs pass
 - [x] Linux, macOS Intel/arm64, and Windows CLI jobs pass
-- [ ] release workflow dry-run produces all four CLI archives and runtime tarball
+- [x] release workflow dry-run produces all four CLI archives and runtime tarball
 
 ## Repository Readiness
 
