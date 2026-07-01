@@ -3,11 +3,11 @@ export {
   type BoundraClient,
   type BoundraTransport,
   type BoundraTransportRequest,
-} from "./client";
+} from "./client.js";
 export {
   BoundraRuntimeError,
   type BoundraRuntimeErrorCode,
-} from "./errors";
+} from "./errors.js";
 export {
   executeContract,
   implementMutation,
@@ -15,7 +15,7 @@ export {
   implementRoute,
   type BoundraHandler,
   type BoundraImplementation,
-} from "./server";
+} from "./server.js";
 export {
   defineMutation,
   defineQuery,
@@ -30,4 +30,4 @@ export {
   type ContractInput,
   type ContractResult,
   type InferSchema,
-} from "./types";
+} from "./types.js";

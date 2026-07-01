@@ -29,6 +29,8 @@
 ## Validation
 
 - [ ] `pnpm verify-dogfood`
+- [ ] `pnpm verify-clean-room`
+- [ ] `cargo clippy --workspace --all-targets -- -D warnings`
 - [ ] `cargo test --workspace`
 - [ ] `cargo run -p boundra-cli -- check-boundaries --root .`
 - [ ] Other:

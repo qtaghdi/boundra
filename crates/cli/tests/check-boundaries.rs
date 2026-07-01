@@ -57,6 +57,19 @@ fn help_lists_the_complete_v1_command_surface() {
 }
 
 #[test]
+fn version_matches_the_cli_package_version() {
+    let root = create_temp_dir("version-output");
+    let output = run_boundra(&root, &["--version"]);
+    let stdout = String::from_utf8_lossy(&output.stdout);
+
+    assert_eq!(output.status.code(), Some(0));
+    assert_eq!(
+        stdout.trim(),
+        format!("boundra {}", env!("CARGO_PKG_VERSION"))
+    );
+}
+
+#[test]
 fn missing_command_prints_actionable_diagnostic() {
     let root = create_temp_dir("missing-command");
     let output = run_boundra(&root, &[]);

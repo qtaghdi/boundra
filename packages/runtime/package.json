@@ -1,9 +1,39 @@
 {
   "name": "@boundra/runtime",
   "version": "0.1.0",
-  "private": true,
+  "description": "Schema-backed runtime contracts for Boundra applications",
   "type": "module",
+  "license": "MIT",
+  "homepage": "https://github.com/qtaghdi/boundra#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/qtaghdi/boundra.git",
+    "directory": "packages/runtime"
+  },
+  "bugs": {
+    "url": "https://github.com/qtaghdi/boundra/issues"
+  },
+  "sideEffects": false,
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "types": "./dist/index.d.ts",
   "exports": {
-    ".": "./src/index.ts"
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "prepack": "pnpm build"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

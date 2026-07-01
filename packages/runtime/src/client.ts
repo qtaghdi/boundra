@@ -2,13 +2,13 @@ import {
   BoundraRuntimeError,
   describeCause,
   parseContractValue,
-} from "./errors";
+} from "./errors.js";
 import type {
   BoundraMutation,
   BoundraQuery,
   BoundraSchema,
   InferSchema,
-} from "./types";
+} from "./types.js";
 
 export type BoundraTransportRequest = {
   kind: "query" | "mutation";

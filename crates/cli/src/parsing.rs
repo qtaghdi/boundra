@@ -16,6 +16,7 @@ pub(crate) enum Command {
     GraphDomains(GraphDomainsOptions),
     Generate(GenerateOptions),
     Help,
+    Version,
 }
 
 pub(crate) fn parse_command(args: &[String]) -> Result<Command, String> {
@@ -45,6 +46,7 @@ pub(crate) fn parse_command(args: &[String]) -> Result<Command, String> {
             Ok(Command::Generate(options))
         }
         "help" | "--help" | "-h" => Ok(Command::Help),
+        "--version" | "-V" => Ok(Command::Version),
         _ => Err(format!("unknown command: {command}")),
     }
 }

@@ -1,4 +1,4 @@
-import type { BoundraSchema, InferSchema } from "./types";
+import type { BoundraSchema, InferSchema } from "./types.js";
 
 export type BoundraRuntimeErrorCode =
   | "RUNTIME-001"

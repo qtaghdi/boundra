@@ -2,6 +2,11 @@
 
 ## 1. Commands
 
+Global information flags:
+
+- `--help`, `-h`
+- `--version`, `-V`
+
 ### 1.1 `create-domain <name>`
 
 Create a domain scaffold.

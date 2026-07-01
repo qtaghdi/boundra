@@ -32,6 +32,10 @@ pub fn run(args: &[String]) -> i32 {
             print_help();
             0
         }
+        Command::Version => {
+            println!("boundra {}", env!("CARGO_PKG_VERSION"));
+            0
+        }
     }
 }
 

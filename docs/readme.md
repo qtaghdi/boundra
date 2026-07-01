@@ -14,6 +14,10 @@
 8. [naming-convention.md](naming-convention.md)
 9. [contract-schema-spec.md](contract-schema-spec.md)
 10. [diagnostic-spec.md](diagnostic-spec.md)
+11. [packaging-spec.md](packaging-spec.md)
+12. [quickstart.md](quickstart.md)
+13. [cli-install.md](cli-install.md)
+14. [release-checklist.md](release-checklist.md)
 
 ## Planning
 
