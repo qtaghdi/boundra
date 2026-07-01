@@ -15,8 +15,9 @@
 - [x] runtime tarball contains only public package files
 - [x] release CLI reports `--version`
 - [x] offline clean-room installation passes outside the repository
-- [ ] online clean-room installation passes in GitHub Actions
-- [ ] Linux, macOS Intel/arm64, and Windows CI jobs pass
+- [x] online clean-room installation passes in GitHub Actions
+- [x] Node.js 20, 22, and 24 runtime jobs pass
+- [ ] Linux, macOS Intel/arm64, and Windows CLI jobs pass
 - [ ] release workflow dry-run produces all four CLI archives and runtime tarball
 
 ## Repository Readiness
@@ -28,7 +29,7 @@
 - [x] Node and native target support matrix
 - [x] npm trusted-publishing workflow with provenance is configured
 - [ ] merge the framework and release-packaging pull requests
-- [ ] enable GitHub private vulnerability reporting
+- [x] enable GitHub private vulnerability reporting
 
 ## Registry and Release
 
