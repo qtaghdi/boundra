@@ -15,6 +15,7 @@
 - [x] runtime tarball contains only public package files
 - [x] release CLI reports `--version`
 - [x] offline clean-room installation passes outside the repository
+- [ ] `cargo install --git` source fallback passes with registry access
 - [x] online clean-room installation passes in GitHub Actions
 - [x] Node.js 20, 22, and 24 runtime jobs pass
 - [ ] Linux, macOS Intel/arm64, and Windows CLI jobs pass

@@ -103,7 +103,7 @@ jobs:
 
   publish-runtime:
     if: github.event_name == 'push'
-    needs: validate
+    needs: [build-cli, build-runtime]
     runs-on: ubuntu-24.04
     permissions:
       contents: read
