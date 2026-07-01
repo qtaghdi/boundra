@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 use boundra_core::Violation;
 use serde::Serialize;
 
@@ -5,6 +7,34 @@ use serde::Serialize;
 pub(crate) enum OutputFormat {
     Text,
     Json,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub(crate) struct CliDiagnostic {
+    pub(crate) code: String,
+    pub(crate) message: String,
+    pub(crate) context: BTreeMap<String, String>,
+    pub(crate) suggestion: String,
+}
+
+impl CliDiagnostic {
+    pub(crate) fn new(
+        code: impl Into<String>,
+        message: impl Into<String>,
+        suggestion: impl Into<String>,
+    ) -> Self {
+        Self {
+            code: code.into(),
+            message: message.into(),
+            context: BTreeMap::new(),
+            suggestion: suggestion.into(),
+        }
+    }
+
+    pub(crate) fn with_context(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
+        self.context.insert(key.into(), value.into());
+        self
+    }
 }
 
 #[derive(Debug, Serialize)]
@@ -28,6 +58,39 @@ struct ViolationOutput<'a> {
 struct OutputMeta<'a> {
     command: &'a str,
     violation_count: usize,
+}
+
+#[derive(Debug, Serialize)]
+struct ErrorOutput<'a> {
+    status: &'static str,
+    errors: [&'a CliDiagnostic; 1],
+    meta: ErrorMeta<'a>,
+}
+
+#[derive(Debug, Serialize)]
+struct ErrorMeta<'a> {
+    command: &'a str,
+}
+
+pub(crate) fn print_error(diagnostic: &CliDiagnostic) {
+    eprintln!("[ERROR] {}", diagnostic.code);
+    eprintln!("message: {}", diagnostic.message);
+    for (key, value) in &diagnostic.context {
+        eprintln!("{key}: {value}");
+    }
+    eprintln!("suggestion: {}", diagnostic.suggestion);
+}
+
+pub(crate) fn print_error_json(command: &str, diagnostic: &CliDiagnostic) {
+    let output = ErrorOutput {
+        status: "error",
+        errors: [diagnostic],
+        meta: ErrorMeta { command },
+    };
+    println!(
+        "{}",
+        serde_json::to_string_pretty(&output).expect("failed to serialize error output")
+    );
 }
 
 pub(crate) fn print_text(violations: &[Violation]) {

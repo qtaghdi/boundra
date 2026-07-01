@@ -28,7 +28,8 @@
 
 ## Validation
 
-- [ ] `cargo test`
+- [ ] `pnpm verify-dogfood`
+- [ ] `cargo test --workspace`
 - [ ] `cargo run -p boundra-cli -- check-boundaries --root .`
 - [ ] Other:
 - [ ] Not run:

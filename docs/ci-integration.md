@@ -2,7 +2,9 @@
 
 ## GitHub Actions
 
-Use `check-boundaries` as a required CI gate:
+Use the committed dogfood flow as the required CI gate. It type-checks the
+TypeScript surface, executes runtime and dogfood flows, runs Rust tests, checks
+boundaries, and renders the domain graph:
 
 ```yaml
 name: Boundra
@@ -14,13 +16,29 @@ on:
       - main
 
 jobs:
-  check-boundaries:
+  verify-dogfood:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
-      - run: cargo run -p boundra-cli -- check-boundaries --root . --format json
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: corepack enable
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm verify-dogfood
 ```
+
+## Local Verification
+
+Run the same aggregate gate locally:
+
+```bash
+pnpm verify-dogfood
+```
+
+The individual boundary command remains suitable for repositories that only
+adopt Boundra's analyzer.
 
 ## Exit Codes
 

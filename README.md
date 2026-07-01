@@ -87,6 +87,8 @@ crates/
 - CI 연동: [docs/ci-integration.md](docs/ci-integration.md)
 - 네이밍 규약: [docs/naming-convention.md](docs/naming-convention.md)
 - 도메인 매니페스트 명세: [docs/domain-manifest-spec.md](docs/domain-manifest-spec.md)
+- 계약 스키마 명세: [docs/contract-schema-spec.md](docs/contract-schema-spec.md)
+- 진단 명세: [docs/diagnostic-spec.md](docs/diagnostic-spec.md)
 - 로드맵: [docs/roadmap.md](docs/roadmap.md)
 - 1인 개발 컨벤션: [docs/solo-convention.md](docs/solo-convention.md)
 - 용어 사전: [docs/glossary.md](docs/glossary.md)
@@ -101,20 +103,36 @@ crates/
 - `create-domain`, `graph-domains`, and initial `generate` workflows are available.
 - `packages/runtime` provides the first TypeScript helper surface for generated contracts.
 - Generated route/query/mutation contracts are registered in `domain.json` `publicApi.shared`.
+- Generated contracts use runtime schemas and inferred TypeScript types.
+- `@boundra/runtime` validates client transports and server handlers.
+- `add-dependency` manages domain graph declarations without manual JSON edits.
+- CLI failures include stable codes, context, suggestions, and JSON output where requested.
+- `apps/dogfood` type-checks a committed two-domain generated-contract flow.
+- `pnpm verify-dogfood` repeats TypeScript, runtime, Rust, boundary, and graph validation.
 - CLI fixture tests cover text/json output, boundary behavior, scaffolding, graph output, code generation, and manifest updates.
 
 ## Quick Start (MVP)
 
 사전 요구사항:
 - Rust toolchain (`cargo`, `rustc`)
+- Node.js 24 and pnpm 11
 
 실행:
 
 ```bash
 cargo run -p boundra-cli -- create-domain order
+cargo run -p boundra-cli -- create-domain billing
+cargo run -p boundra-cli -- add-dependency billing/order
 cargo run -p boundra-cli -- check-boundaries
 cargo run -p boundra-cli -- graph-domains --format mermaid
 cargo run -p boundra-cli -- generate route order/create-order
+```
+
+전체 dogfood 검증:
+
+```bash
+pnpm install
+pnpm verify-dogfood
 ```
 
 Run against an explicit project root:

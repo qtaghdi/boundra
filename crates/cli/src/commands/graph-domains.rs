@@ -5,6 +5,7 @@ use std::path::PathBuf;
 use boundra_core::{load_project_model, DomainManifest};
 use serde::Serialize;
 
+use crate::output::{print_error, print_error_json, CliDiagnostic};
 use crate::util::display_path;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -52,7 +53,13 @@ pub(crate) fn run(options: &GraphDomainsOptions) -> i32 {
     let project = match load_project_model(&options.root) {
         Ok(project) => project,
         Err(err) => {
-            eprintln!("failed to load project: {err}");
+            let diagnostic = CliDiagnostic::new(
+                "PROJECT-001",
+                format!("failed to load project: {err}"),
+                "fix the reported config or domain manifest and retry",
+            )
+            .with_context("root", options.root.display().to_string());
+            report_error(options, &diagnostic);
             return 2;
         }
     };
@@ -68,12 +75,28 @@ pub(crate) fn run(options: &GraphDomainsOptions) -> i32 {
     if let Some(path) = &options.output {
         if let Some(parent) = path.parent() {
             if let Err(err) = fs::create_dir_all(parent) {
-                eprintln!("failed to create graph output directory: {err}");
+                report_error(
+                    options,
+                    &CliDiagnostic::new(
+                        "PROJECT-003",
+                        format!("failed to create graph output directory: {err}"),
+                        "check output path permissions and retry",
+                    )
+                    .with_context("output", display_path(path)),
+                );
                 return 3;
             }
         }
         if let Err(err) = fs::write(path, output) {
-            eprintln!("failed to write graph output: {err}");
+            report_error(
+                options,
+                &CliDiagnostic::new(
+                    "PROJECT-004",
+                    format!("failed to write graph output: {err}"),
+                    "check output path permissions and retry",
+                )
+                .with_context("output", display_path(path)),
+            );
             return 3;
         }
         println!("graph-domains: OK ({})", display_path(path));
@@ -82,6 +105,13 @@ pub(crate) fn run(options: &GraphDomainsOptions) -> i32 {
 
     println!("{output}");
     0
+}
+
+fn report_error(options: &GraphDomainsOptions, diagnostic: &CliDiagnostic) {
+    match options.format {
+        GraphFormat::Json => print_error_json("graph-domains", diagnostic),
+        GraphFormat::Mermaid | GraphFormat::Dot => print_error(diagnostic),
+    }
 }
 
 fn render_mermaid_graph(domains: &BTreeMap<String, DomainManifest>) -> String {

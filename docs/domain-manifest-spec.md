@@ -15,6 +15,7 @@ It is used by:
 - `check-boundaries`
 - `graph-domains`
 - `generate route|query|mutation`
+- `add-dependency`
 - BR-004 public API validation
 
 ## 3. Schema Shape
@@ -80,7 +81,15 @@ After generation, the CLI appends the contract to:
 
 Existing `publicApi.shared` entries are preserved. Duplicate entries are not added.
 
-## 7. Versioning
+Generation also appends an idempotent export to `shared/public.ts`.
+
+## 7. Dependency Update Behavior
+
+`add-dependency <domain>/<dependency>` appends the dependency to `dependsOn`.
+Both domains must exist, self-dependencies are rejected, and repeated calls do
+not add duplicates.
+
+## 8. Versioning
 
 Initial schema version:
 

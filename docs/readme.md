@@ -12,6 +12,8 @@
 6. [config-spec.md](config-spec.md)
 7. [framework-surface.md](framework-surface.md)
 8. [naming-convention.md](naming-convention.md)
+9. [contract-schema-spec.md](contract-schema-spec.md)
+10. [diagnostic-spec.md](diagnostic-spec.md)
 
 ## Planning
 
