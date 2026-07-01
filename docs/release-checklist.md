@@ -18,7 +18,7 @@
 - [ ] `cargo install --git` source fallback passes with registry access
 - [x] online clean-room installation passes in GitHub Actions
 - [x] Node.js 20, 22, and 24 runtime jobs pass
-- [ ] Linux, macOS Intel/arm64, and Windows CLI jobs pass
+- [x] Linux, macOS Intel/arm64, and Windows CLI jobs pass
 - [ ] release workflow dry-run produces all four CLI archives and runtime tarball
 
 ## Repository Readiness
@@ -29,11 +29,12 @@
 - [x] public quickstart and CLI install guide
 - [x] Node and native target support matrix
 - [x] npm trusted-publishing workflow with provenance is configured
-- [ ] merge the framework and release-packaging pull requests
+- [x] merge the framework and release-packaging pull requests
 - [x] enable GitHub private vulnerability reporting
 
 ## Registry and Release
 
+- [ ] deprecate the accidental repository snapshot published as `boundra@0.1.0`
 - [ ] confirm ownership of the `@boundra` npm scope
 - [ ] configure npm trusted publishing or a scoped automation token
 - [ ] publish `@boundra/runtime@0.1.0`
