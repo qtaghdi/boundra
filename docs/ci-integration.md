@@ -2,8 +2,8 @@
 
 ## GitHub Actions
 
-Use the committed dogfood flow as the required CI gate. It type-checks the
-TypeScript surface, executes runtime and dogfood flows, runs Rust tests, checks
+Use the committed example flow as the required CI gate. It type-checks the
+TypeScript surface, executes runtime and example flows, runs Rust tests, checks
 boundaries, and renders the domain graph:
 
 ```yaml
@@ -16,7 +16,7 @@ on:
       - main
 
 jobs:
-  verify-dogfood:
+  verify-example:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -26,7 +26,7 @@ jobs:
           node-version: 24
       - run: corepack enable
       - run: pnpm install --frozen-lockfile
-      - run: pnpm verify-dogfood
+      - run: pnpm verify-example
 ```
 
 ## Local Verification
@@ -34,7 +34,7 @@ jobs:
 Run the same aggregate gate locally:
 
 ```bash
-pnpm verify-dogfood
+pnpm verify-example
 ```
 
 The individual boundary command remains suitable for repositories that only
@@ -52,7 +52,7 @@ adopt Boundra's analyzer.
 CI and agent integrations should prefer JSON output:
 
 ```bash
-cargo run -p boundra-cli -- check-boundaries --root . --format json
+cargo run -p boundra-cli -- check-boundaries --root examples/order-billing --format json
 ```
 
 Example:

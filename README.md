@@ -111,8 +111,8 @@ crates/
 - `@boundra/runtime` validates client transports and server handlers.
 - `add-dependency` manages domain graph declarations without manual JSON edits.
 - CLI failures include stable codes, context, suggestions, and JSON output where requested.
-- `apps/dogfood` type-checks a committed two-domain generated-contract flow.
-- `pnpm verify-dogfood` repeats TypeScript, runtime, Rust, boundary, and graph validation.
+- `examples/order-billing` is a committed two-domain generated-contract flow.
+- `pnpm verify-example` repeats TypeScript, runtime, Rust, boundary, and graph validation.
 - CLI fixture tests cover text/json output, boundary behavior, scaffolding, graph output, code generation, and manifest updates.
 
 ## Quick Start (MVP)
@@ -121,38 +121,35 @@ crates/
 - Rust toolchain (`cargo`, `rustc`)
 - Node.js 24 and pnpm 11
 
-실행:
+예제 실행:
 
 ```bash
-cargo run -p boundra-cli -- create-domain order
-cargo run -p boundra-cli -- create-domain billing
-cargo run -p boundra-cli -- add-dependency billing/order
-cargo run -p boundra-cli -- check-boundaries
-cargo run -p boundra-cli -- graph-domains --format mermaid
-cargo run -p boundra-cli -- generate route order/create-order
+pnpm example:order-billing
+cargo run -p boundra-cli -- check-boundaries --root examples/order-billing
+cargo run -p boundra-cli -- graph-domains --root examples/order-billing --format mermaid
 ```
 
-전체 dogfood 검증:
+전체 예제 검증:
 
 ```bash
 pnpm install
-pnpm verify-dogfood
+pnpm verify-example
 ```
 
 Run against an explicit project root:
 
 ```bash
-cargo run -p boundra-cli -- check-boundaries --root .
+cargo run -p boundra-cli -- check-boundaries --root examples/order-billing
 ```
 
 JSON 출력:
 
 ```bash
-cargo run -p boundra-cli -- check-boundaries --format json
+cargo run -p boundra-cli -- check-boundaries --root examples/order-billing --format json
 ```
 
 CI 실행:
 
 ```bash
-cargo run -p boundra-cli -- check-boundaries --root . --format json
+cargo run -p boundra-cli -- check-boundaries --root examples/order-billing --format json
 ```

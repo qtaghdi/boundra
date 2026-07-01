@@ -28,11 +28,11 @@
 
 ## Validation
 
-- [ ] `pnpm verify-dogfood`
+- [ ] `pnpm verify-example`
 - [ ] `pnpm verify-clean-room`
 - [ ] `cargo clippy --workspace --all-targets -- -D warnings`
 - [ ] `cargo test --workspace`
-- [ ] `cargo run -p boundra-cli -- check-boundaries --root .`
+- [ ] `cargo run -p boundra-cli -- check-boundaries --root examples/order-billing`
 - [ ] Other:
 - [ ] Not run:
 

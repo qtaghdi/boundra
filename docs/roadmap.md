@@ -53,12 +53,12 @@ Status: complete for the first internal flow.
 
 Completed:
 
-- committed a framework-neutral TypeScript consumer in `apps/dogfood`
+- promoted the framework-neutral TypeScript consumer to `examples/order-billing`
 - created `order` and `billing` domains through the Boundra CLI
 - type-checked generated route/query/mutation contracts against
   `@boundra/runtime`
 - exercised a declared cross-domain public API import
-- added one local and CI verification command with `pnpm verify-dogfood`
+- added one local and CI verification command with `pnpm verify-example`
 - executed runtime input/result validation, client transport, and a server route
 - removed manual dependency editing with `add-dependency`
 - stabilized CLI error codes, context, suggestions, and JSON failure output

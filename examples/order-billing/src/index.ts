@@ -21,7 +21,7 @@ const transport: BoundraTransport = async (request) => {
   }
 };
 
-export async function runDogfood() {
+export async function runExample() {
   const client = createBoundraClient(transport);
   const order = await getOrder(client, { orderId: "order-001" });
   const submitted = await submitOrder(client, {
@@ -33,7 +33,7 @@ export async function runDogfood() {
   });
 
   if (order.orderId !== invoice.orderId) {
-    throw new Error("dogfood contract flow returned inconsistent order IDs");
+    throw new Error("example contract flow returned inconsistent order IDs");
   }
 
   try {
@@ -48,5 +48,5 @@ export async function runDogfood() {
   return { invoice, order, submitted };
 }
 
-const result = await runDogfood();
-console.log(`dogfood: OK (${result.invoice.invoiceId})`);
+const result = await runExample();
+console.log(`order-billing example: OK (${result.invoice.invoiceId})`);

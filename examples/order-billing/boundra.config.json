@@ -2,14 +2,14 @@
   "$schema": "https://boundra.dev/schemas/boundra-config.v1.json",
   "version": 1,
   "project": {
-    "name": "boundra",
+    "name": "order-billing",
     "workspaceRoot": "."
   },
   "paths": {
     "apps": "apps",
     "domains": "domains",
-    "packages": "packages",
-    "crates": "crates"
+    "packages": "../../packages",
+    "crates": "../../crates"
   },
   "domain": {
     "layers": [

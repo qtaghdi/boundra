@@ -29,7 +29,7 @@ jobs:
       - run: corepack enable
       - run: pnpm install --frozen-lockfile
       - run: pnpm check-release-version "${RELEASE_VERSION}"
-      - run: pnpm verify-dogfood
+      - run: pnpm verify-example
       - run: pnpm verify-clean-room
 
   build-cli:

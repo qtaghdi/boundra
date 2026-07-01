@@ -7,6 +7,11 @@ apps/
   web/
   admin/
 
+examples/
+  order-billing/
+    domains/
+    src/
+
 domains/
   <domain>/
     client/
@@ -28,6 +33,12 @@ crates/
   rules/
   cli/
 ```
+
+`apps/` contains deployable product entry points owned by the repository.
+`examples/` contains self-contained learning and framework-verification
+projects. An example must keep its own Boundra config, TypeScript config, and
+domains so it can be checked through an explicit `--root` without treating the
+framework repository itself as an application.
 
 ## 2. Domain Layers
 

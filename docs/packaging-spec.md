@@ -16,7 +16,7 @@ Public npm package containing:
 - package metadata and README
 - no TypeScript source dependency at runtime
 
-The package must not publish tests, workspace configuration, or dogfood files.
+The package must not publish tests, workspace configuration, or example files.
 
 ### `boundra` CLI
 
