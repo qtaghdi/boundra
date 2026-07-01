@@ -51,6 +51,10 @@ does not incorrectly raise the runtime's minimum Node.js version.
 `pnpm --filter @boundra/runtime pack` must contain only the intended public
 files, and a fresh project must be able to import every public runtime export.
 
+Tag releases publish through npm trusted publishing on a GitHub-hosted runner
+with OIDC. The npm package must be linked to `.github/workflows/release.yml`
+before the first tag is pushed.
+
 ## 4. CLI Contract
 
 The release binary must:

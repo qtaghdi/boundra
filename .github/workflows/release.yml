@@ -101,8 +101,29 @@ jobs:
           path: dist/*.tgz
           if-no-files-found: error
 
+  publish-runtime:
+    if: github.event_name == 'push'
+    needs: validate
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+      - run: corepack enable
+      - run: npm install --global npm@latest
+      - run: pnpm install --frozen-lockfile
+      - run: npm publish --access public
+        working-directory: packages/runtime
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
   publish-release:
-    needs: [build-cli, build-runtime]
+    needs: [build-cli, build-runtime, publish-runtime]
     if: github.event_name == 'push'
     runs-on: ubuntu-24.04
     permissions:

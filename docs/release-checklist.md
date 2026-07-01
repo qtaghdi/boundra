@@ -26,6 +26,7 @@
 - [x] `CHANGELOG.md`
 - [x] public quickstart and CLI install guide
 - [x] Node and native target support matrix
+- [x] npm trusted-publishing workflow with provenance is configured
 - [ ] merge the framework and release-packaging pull requests
 - [ ] enable GitHub private vulnerability reporting
 
