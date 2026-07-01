@@ -1,0 +1,122 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version to build without publishing
+        required: true
+        default: "0.1.0"
+
+env:
+  RELEASE_VERSION: ${{ github.event_name == 'workflow_dispatch' && inputs.version || github.ref_name }}
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: corepack enable
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm check-release-version "${RELEASE_VERSION}"
+      - run: pnpm verify-dogfood
+      - run: pnpm verify-clean-room
+
+  build-cli:
+    needs: validate
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            target: x86_64-unknown-linux-gnu
+          - os: macos-15-intel
+            target: x86_64-apple-darwin
+          - os: macos-15
+            target: aarch64-apple-darwin
+          - os: windows-2025
+            target: x86_64-pc-windows-msvc
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+      - run: cargo build --release -p boundra-cli --target ${{ matrix.target }}
+      - name: Archive Unix CLI
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          version="${RELEASE_VERSION#v}"
+          name="boundra-${version}-${{ matrix.target }}"
+          mkdir -p "dist/${name}"
+          cp "target/${{ matrix.target }}/release/boundra" "dist/${name}/"
+          cp LICENSE "dist/${name}/"
+          cp docs/cli-install.md "dist/${name}/README.md"
+          tar -C dist -czf "dist/${name}.tar.gz" "${name}"
+          rm -rf "dist/${name}"
+      - name: Archive Windows CLI
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $version = $env:RELEASE_VERSION.TrimStart('v')
+          $name = "boundra-$version-${{ matrix.target }}"
+          New-Item -ItemType Directory -Force -Path "dist/$name"
+          Copy-Item "target/${{ matrix.target }}/release/boundra.exe" "dist/$name/"
+          Copy-Item LICENSE "dist/$name/"
+          Copy-Item docs/cli-install.md "dist/$name/README.md"
+          Compress-Archive -Path "dist/$name/*" -DestinationPath "dist/$name.zip"
+          Remove-Item -Recurse -Force "dist/$name"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cli-${{ matrix.target }}
+          path: dist/*
+          if-no-files-found: error
+
+  build-runtime:
+    needs: validate
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: corepack enable
+      - run: pnpm install --frozen-lockfile
+      - run: mkdir -p dist
+      - run: pnpm --filter @boundra/runtime pack --pack-destination "$GITHUB_WORKSPACE/dist"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: runtime-package
+          path: dist/*.tgz
+          if-no-files-found: error
+
+  publish-release:
+    needs: [build-cli, build-runtime]
+    if: github.event_name == 'push'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: release
+          merge-multiple: true
+      - name: Generate checksums
+        working-directory: release
+        run: sha256sum * > checksums-sha256.txt
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" release/* --verify-tag --generate-notes

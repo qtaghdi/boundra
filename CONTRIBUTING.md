@@ -8,8 +8,9 @@
 
 ## 2. Branch Strategy
 
-- 기본 브랜치: `develop` (팀 정책에 맞춰 조정 가능)
-- 기능 브랜치 권장: `codex/<scope>-<short-desc>`
+- 기본 브랜치: `main`
+- 브랜치: `<type>/<scope>` 또는 `<type>/<scope>-<short-description>`
+- 예: `feat/release-packaging`, `fix/parser-comments`
 
 ## 3. Commit Convention (Recommended)
 
@@ -30,6 +31,8 @@
 - 도메인 경계를 위반하지 않는가?
 - 문서/명세 반영이 되었는가?
 - 테스트 또는 검증 방법이 포함되었는가?
+- `pnpm verify-dogfood`와 `cargo clippy --workspace --all-targets -- -D warnings`가 통과하는가?
+- 패키징 변경이면 `pnpm verify-clean-room`이 통과하는가?
 
 ## 5. Code Standards
 

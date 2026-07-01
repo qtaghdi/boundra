@@ -76,6 +76,7 @@ pub fn collect_imports_with_options(
 fn extract_imports_from_content(content: &str) -> Vec<(usize, String)> {
     let mut imports = Vec::new();
     let mut pending_statement: Option<PendingStatement> = None;
+    let content = strip_comments_preserving_strings(content);
 
     for (idx, line) in content.lines().enumerate() {
         let line_number = idx + 1;
@@ -110,10 +111,10 @@ fn extract_imports_from_content(content: &str) -> Vec<(usize, String)> {
         }
 
         // CommonJS require도 boundary 위반을 만들 수 있어서 import처럼 수집한다.
-        if trimmed.contains("require(") {
+        if contains_code_call(trimmed, "require(") {
             if let Some(import_path) = extract_require_path(trimmed) {
                 imports.push((line_number, import_path));
-            } else {
+            } else if call_may_continue(trimmed, "require(") {
                 pending_statement = Some(PendingStatement::new(
                     line_number,
                     trimmed.to_string(),
@@ -124,10 +125,10 @@ fn extract_imports_from_content(content: &str) -> Vec<(usize, String)> {
         }
 
         // dynamic import('../x')도 client/server 경계를 우회할 수 있으므로 검사 대상이다.
-        if trimmed.contains("import(") {
+        if contains_code_call(trimmed, "import(") {
             if let Some(import_path) = extract_dynamic_import_path(trimmed) {
                 imports.push((line_number, import_path));
-            } else {
+            } else if call_may_continue(trimmed, "import(") {
                 pending_statement = Some(PendingStatement::new(
                     line_number,
                     trimmed.to_string(),
@@ -206,8 +207,120 @@ fn extract_dynamic_import_path(line: &str) -> Option<String> {
 }
 
 fn extract_path_after_call(line: &str, needle: &str) -> Option<String> {
-    let (_, rest) = line.split_once(needle)?;
+    let index = find_code_needle(line, needle)?;
+    let rest = &line[index + needle.len()..];
     extract_first_quoted(rest)
+}
+
+fn contains_code_call(line: &str, needle: &str) -> bool {
+    find_code_needle(line, needle).is_some()
+}
+
+fn call_may_continue(line: &str, needle: &str) -> bool {
+    let Some(index) = find_code_needle(line, needle) else {
+        return false;
+    };
+    !line[index + needle.len()..].contains(')')
+}
+
+fn find_code_needle(line: &str, needle: &str) -> Option<usize> {
+    let bytes = line.as_bytes();
+    let mut index = 0;
+    let mut quote: Option<u8> = None;
+    let mut escaped = false;
+
+    while index < bytes.len() {
+        let byte = bytes[index];
+        if let Some(active_quote) = quote {
+            if escaped {
+                escaped = false;
+            } else if byte == b'\\' {
+                escaped = true;
+            } else if byte == active_quote {
+                quote = None;
+            }
+            index += 1;
+            continue;
+        }
+
+        if matches!(byte, b'\'' | b'"' | b'`') {
+            quote = Some(byte);
+            index += 1;
+            continue;
+        }
+        if bytes[index..].starts_with(needle.as_bytes()) {
+            return Some(index);
+        }
+        index += 1;
+    }
+
+    None
+}
+
+fn strip_comments_preserving_strings(content: &str) -> String {
+    let bytes = content.as_bytes();
+    let mut output = String::with_capacity(content.len());
+    let mut index = 0;
+    let mut quote: Option<u8> = None;
+    let mut escaped = false;
+    let mut block_comment = false;
+
+    while index < bytes.len() {
+        let byte = bytes[index];
+        let next = bytes.get(index + 1).copied();
+
+        if block_comment {
+            if byte == b'*' && next == Some(b'/') {
+                output.push_str("  ");
+                index += 2;
+                block_comment = false;
+            } else {
+                output.push(if byte == b'\n' { '\n' } else { ' ' });
+                index += 1;
+            }
+            continue;
+        }
+
+        if let Some(active_quote) = quote {
+            output.push(byte as char);
+            if escaped {
+                escaped = false;
+            } else if byte == b'\\' {
+                escaped = true;
+            } else if byte == active_quote {
+                quote = None;
+            }
+            index += 1;
+            continue;
+        }
+
+        if matches!(byte, b'\'' | b'"' | b'`') {
+            quote = Some(byte);
+            output.push(byte as char);
+            index += 1;
+            continue;
+        }
+        if byte == b'/' && next == Some(b'/') {
+            output.push_str("  ");
+            index += 2;
+            while index < bytes.len() && bytes[index] != b'\n' {
+                output.push(' ');
+                index += 1;
+            }
+            continue;
+        }
+        if byte == b'/' && next == Some(b'*') {
+            output.push_str("  ");
+            index += 2;
+            block_comment = true;
+            continue;
+        }
+
+        output.push(byte as char);
+        index += 1;
+    }
+
+    output
 }
 
 fn collect_ts_like_files(
@@ -281,7 +394,7 @@ fn extract_path_after_keyword(line: &str, needle: &str) -> Option<String> {
 }
 
 fn extract_first_quoted(input: &str) -> Option<String> {
-    let start = input.find('\'').or_else(|| input.find('"'))?;
+    let start = input.find(['\'', '"', '`'])?;
     let quote = input.as_bytes()[start] as char;
     let after = &input[start + 1..];
     let end = after.find(quote)?;
@@ -354,5 +467,43 @@ mod tests {
 
         let imports = extract_imports_from_content(content);
         assert_eq!(imports, vec![(1, "../server/checkout".to_string())]);
+    }
+
+    #[test]
+    fn ignores_imports_inside_comments() {
+        let content = r#"// import '../server/commented';
+/*
+import { hidden } from '../server/hidden';
+const alsoHidden = require('../server/hidden-require');
+*/
+import { visible } from '../shared/visible';
+"#;
+
+        assert_eq!(import_paths(content), vec!["../shared/visible"]);
+    }
+
+    #[test]
+    fn ignores_import_calls_inside_strings() {
+        let content = r#"const first = "require('../server/not-real')";
+const second = `import('../server/not-real-either')`;
+const actual = require('../shared/actual');
+"#;
+
+        assert_eq!(import_paths(content), vec!["../shared/actual"]);
+    }
+
+    #[test]
+    fn ignores_non_literal_dynamic_import_without_swallowing_next_statement() {
+        let content = r#"const selected = import(moduleName);
+import { visible } from '../shared/visible';
+"#;
+
+        assert_eq!(import_paths(content), vec!["../shared/visible"]);
+    }
+
+    #[test]
+    fn extracts_static_template_literal_dynamic_import() {
+        let content = "const selected = import(`../shared/visible`);";
+        assert_eq!(import_paths(content), vec!["../shared/visible"]);
     }
 }

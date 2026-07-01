@@ -107,7 +107,10 @@ Goals:
 
 Goals:
 
-- decide npm/binary packaging strategy
+- package `@boundra/runtime` as compiled ESM and declarations
+- publish native CLI archives with checksums
 - write public quickstart
 - provide examples after dogfooding
 - publish only after CLI commands and generated layouts stabilize
+
+Packaging direction is defined by ADR 0003 and `docs/packaging-spec.md`.

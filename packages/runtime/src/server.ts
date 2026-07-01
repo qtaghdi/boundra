@@ -2,7 +2,7 @@ import {
   BoundraRuntimeError,
   describeCause,
   parseContractValue,
-} from "./errors";
+} from "./errors.js";
 import type {
   AnyBoundraContract,
   BoundraMutation,
@@ -11,7 +11,7 @@ import type {
   BoundraSchema,
   ContractInput,
   ContractResult,
-} from "./types";
+} from "./types.js";
 
 export type BoundraHandler<Contract extends AnyBoundraContract> = (
   input: ContractInput<Contract>,
