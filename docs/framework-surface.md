@@ -74,8 +74,10 @@ packages/
 
 Initial responsibilities:
 
-- expose helper types for generated contracts
-- define route/query/mutation adapter shapes
+- expose schema-backed helper types for generated contracts
+- define route/query/mutation contract and implementation shapes
+- validate contract input and result values
+- provide a framework-neutral client/transport boundary
 - avoid framework-specific runtime behavior
 - avoid depending on React, Next.js, database clients, or server runtimes
 
@@ -83,37 +85,41 @@ Non-goals:
 
 - no HTTP server
 - no router replacement
-- no fetch client abstraction yet
+- no built-in fetch transport yet
 - no React hooks runtime yet
 - no ORM integration
 
 ## 5. Generated Code Direction
 
-Generated files should gradually move from placeholders to runtime-backed shapes.
+Generated files use runtime-backed schema shapes.
 
 Example direction:
 
 ```ts
-import type { BoundraRoute } from "@boundra/runtime";
+import { defineRoute, type InferSchema } from "@boundra/runtime";
+import { z } from "zod";
 
-export type CreateInvoiceInput = Record<string, never>;
-export type CreateInvoiceResult = Record<string, never>;
+export const createInvoiceInputSchema = z.object({});
+export const createInvoiceResultSchema = z.object({});
 
-export const createInvoiceRoute: BoundraRoute<
-  CreateInvoiceInput,
-  CreateInvoiceResult
-> = {
+export type CreateInvoiceInput = InferSchema<typeof createInvoiceInputSchema>;
+export type CreateInvoiceResult = InferSchema<typeof createInvoiceResultSchema>;
+
+export const createInvoiceRoute = defineRoute({
   name: "create-invoice",
-};
+  input: createInvoiceInputSchema,
+  result: createInvoiceResultSchema,
+});
 ```
 
-This keeps generated code simple while giving applications a stable surface to build against.
+Zod authors schemas, while the runtime depends only on a structural `parse`
+contract. See `docs/contract-schema-spec.md` and ADR 0002.
 
 ## 6. Dogfooding Rule
 
 Do not add Starlark, Lua, or WASM plugin runtime until Boundra has been used in at least one real internal project flow.
 
-The next validation target is:
+The first validation target is complete:
 
 - create at least two domains
 - generate at least one route, query, and mutation
@@ -121,9 +127,19 @@ The next validation target is:
 - run `check-boundaries` and `graph-domains` during normal development
 - record missing APIs before adding extension scripting
 
+The committed `apps/dogfood` flow now covers these points and is verified by
+`pnpm verify-dogfood`. It exposed placeholder contract types, manual dependency
+declarations, and missing public export generation as the next design inputs.
+
+Those inputs are resolved by ADR 0002, schema-backed generated contracts, the
+framework-neutral client/server runtime, `add-dependency`, and generated shared
+public exports.
+
 ## 7. First Implementation Slice
 
-The first code slice is:
+Status: complete.
+
+The first code slice was:
 
 1. add `packages/runtime`
 2. define pure TypeScript helper types

@@ -1,0 +1,19 @@
+{
+  "name": "boundra",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@11.7.0",
+  "scripts": {
+    "dogfood": "node --import tsx apps/dogfood/src/index.ts",
+    "test-runtime": "node --import tsx packages/runtime/tests/runtime-test.ts",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "verify-dogfood": "tsc --noEmit -p tsconfig.json && node --import tsx packages/runtime/tests/runtime-test.ts && node --import tsx apps/dogfood/src/index.ts && cargo test --workspace && cargo run -p boundra-cli -- check-boundaries --root . --format json && cargo run -p boundra-cli -- graph-domains --root . --format json"
+  },
+  "devDependencies": {
+    "tsx": "^4.22.4",
+    "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "zod": "^4.4.3"
+  }
+}

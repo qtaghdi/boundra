@@ -3,6 +3,7 @@ use std::path::{Path, PathBuf};
 
 use boundra_core::{load_config, PublicApi};
 
+use crate::output::{print_error, CliDiagnostic};
 use crate::util::{display_path, is_kebab_case};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -13,15 +14,28 @@ pub(crate) struct CreateDomainOptions {
 
 pub(crate) fn run(options: &CreateDomainOptions) -> i32 {
     if !is_kebab_case(&options.name) {
-        eprintln!("invalid domain name: {}", options.name);
-        eprintln!("domain names must use kebab-case");
+        print_error(
+            &CliDiagnostic::new(
+                "DOMAIN-001",
+                format!("invalid domain name '{}'", options.name),
+                "use a kebab-case name such as 'user-auth'",
+            )
+            .with_context("domain", &options.name),
+        );
         return 2;
     }
 
     let config = match load_config(&options.root) {
         Ok(config) => config,
         Err(err) => {
-            eprintln!("failed to load config: {err}");
+            print_error(
+                &CliDiagnostic::new(
+                    "PROJECT-001",
+                    format!("failed to load config: {err}"),
+                    "fix boundra.config.json and run the command again",
+                )
+                .with_context("root", options.root.display().to_string()),
+            );
             return 2;
         }
     };
@@ -30,12 +44,26 @@ pub(crate) fn run(options: &CreateDomainOptions) -> i32 {
     let domain_root = domains_root.join(&options.name);
 
     if domain_root.exists() {
-        eprintln!("domain already exists: {}", options.name);
+        print_error(
+            &CliDiagnostic::new(
+                "DOMAIN-002",
+                format!("domain '{}' already exists", options.name),
+                "choose a new domain name or use the existing domain",
+            )
+            .with_context("path", display_path(&domain_root)),
+        );
         return 2;
     }
 
     if let Err(err) = scaffold_domain(&domain_root, &options.name, &config.domain.public_api) {
-        eprintln!("failed to create domain: {err}");
+        print_error(
+            &CliDiagnostic::new(
+                "DOMAIN-003",
+                format!("failed to create domain '{}': {err}", options.name),
+                "check workspace permissions and remove any partial scaffold before retrying",
+            )
+            .with_context("path", display_path(&domain_root)),
+        );
         return 3;
     }
 

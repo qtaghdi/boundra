@@ -21,6 +21,8 @@ Boundra now has a usable MVP foundation:
 - `packages/runtime` provides the first pure TypeScript helper types used by generated contracts.
 - Generated route/query/mutation contracts are automatically registered in `domain.json` `publicApi.shared`.
 - Source and documentation filenames follow `kebab-case`; Rust module identifiers use language-native `snake_case` only behind `#[path = "..."]` where needed.
+- A committed two-domain TypeScript dogfood app type-checks generated contracts against `@boundra/runtime`.
+- `pnpm verify-dogfood` runs TypeScript, runtime, Rust, boundary, and graph validation locally and in CI.
 
 ## Completed: Replace Ad Hoc JSON Parsing
 
@@ -98,7 +100,7 @@ Completed:
 - Implement `generate route <domain>/<name>`.
 - Implement `generate query <domain>/<name>`.
 - Implement `generate mutation <domain>/<name>`.
-- Generate shared contract stubs and server/client placeholders.
+- Generate schema-backed shared contracts and executable server/client adapters.
 - Enforce kebab-case for generated resources.
 - Refuse generation when the target domain does not exist.
 
@@ -148,6 +150,28 @@ Completed:
 - Avoid duplicate public API entries.
 - Add CLI fixture assertions for manifest updates.
 
+## Completed: Schema-Backed Framework Runtime
+
+Contracts now provide executable validation rather than placeholder types.
+
+Completed:
+
+- Add provider-agnostic `BoundraSchema` and schema inference helpers.
+- Generate Zod input/result schemas.
+- Validate inputs and results around client transports and server handlers.
+- Generate framework-neutral query/mutation adapters.
+- Maintain `shared/public.ts` exports.
+- Add runtime failure tests for input, result, transport, and handler errors.
+
+## Completed: Dependency and Diagnostic Workflows
+
+Completed:
+
+- Add idempotent `add-dependency <domain>/<dependency>`.
+- Add stable CLI error codes, context, and suggestions.
+- Preserve machine-readable JSON for usage and project failures.
+- Add complete CLI help and failure-path fixture coverage.
+
 ## Completed: Align Docs With MVP State
 
 The documentation now reflects the current core tooling MVP rather than the original plan-only state.
@@ -162,6 +186,6 @@ Completed:
 
 ## Next Priority
 
-- Codegen templates backed by schema definitions instead of placeholder contracts.
-- Help/usage output tests for the modularized CLI.
-- More complete parser backend, likely SWC, for comments and TypeScript syntax edge cases.
+- Run Boundra against a larger real repository and collect parser/performance evidence.
+- Decide whether parser evidence justifies an SWC backend.
+- Harden packaging and public quickstart after the generated API settles.

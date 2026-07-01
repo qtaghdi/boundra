@@ -40,15 +40,28 @@ Completed:
 - TypeScript runtime helper surface in `packages/runtime`
 - CLI internals split into modules
 
-Remaining:
+Completed in the framework-quality follow-up:
 
 - schema-backed codegen templates
-- stronger generated contract model
+- executable contract runtime and client/server adapters
+- generated shared public exports
 - help/usage output tests
 
 ## Phase 3: Dogfooding
 
-Status: next.
+Status: complete for the first internal flow.
+
+Completed:
+
+- committed a framework-neutral TypeScript consumer in `apps/dogfood`
+- created `order` and `billing` domains through the Boundra CLI
+- type-checked generated route/query/mutation contracts against
+  `@boundra/runtime`
+- exercised a declared cross-domain public API import
+- added one local and CI verification command with `pnpm verify-dogfood`
+- executed runtime input/result validation, client transport, and a server route
+- removed manual dependency editing with `add-dependency`
+- stabilized CLI error codes, context, suggestions, and JSON failure output
 
 Goals:
 
@@ -64,6 +77,8 @@ Done when:
 - generated contracts are useful enough to keep
 - repeated friction is captured as concrete issues or docs updates
 
+Resolved friction is documented in `docs/dogfooding-notes.md` and ADR 0002.
+
 ## Phase 4: Core Stabilization
 
 Goals:
@@ -73,6 +88,12 @@ Goals:
 - improve performance on larger workspaces
 - stabilize JSON output schemas
 - harden manifest/config schema compatibility
+
+Current priority:
+
+- validate parser edge cases from real repositories before choosing SWC
+- improve performance measurements on larger workspaces
+- prepare packaging only after the current generated API settles
 
 ## Phase 5: Extension Design
 

@@ -37,23 +37,29 @@ Done:
 - README and docs index provide an onboarding path.
 - `cargo test` passes locally.
 
-## Not In MVP
+## Originally Deferred From MVP
 
 The following are intentionally deferred:
 
 - npm package or binary distribution.
 - public release workflow.
 - full TypeScript parser or SWC backend.
-- schema-backed codegen.
-- real application dogfooding.
 - Starlark/Lua extension runtime.
 
-## Next Validation
+Schema-backed codegen and application dogfooding were completed in the
+post-MVP framework slice.
 
-Before release work, Boundra should be used in a real internal project flow:
+## Post-MVP Validation
 
-- create at least two domains
-- generate route/query/mutation artifacts
-- wire generated contracts into an app or package
-- run `check-boundaries` and `graph-domains` during normal development
-- record friction before adding extension scripting
+The first committed dogfood slice is complete:
+
+- `order` and `billing` were created through the Boundra CLI
+- route/query/mutation artifacts are consumed by `apps/dogfood`
+- generated contracts pass strict TypeScript compilation
+- `check-boundaries` and `graph-domains` run in the aggregate
+  `pnpm verify-dogfood` gate
+- observed friction is recorded in `docs/dogfooding-notes.md`
+
+Dogfooding now executes schema validation, transport calls, and route handlers.
+Domain dependencies are managed through `add-dependency`, so the first dogfood
+phase is complete without manual manifest maintenance.

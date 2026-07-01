@@ -1,5 +1,6 @@
 use std::path::PathBuf;
 
+use crate::commands::add_dependency::AddDependencyOptions;
 use crate::commands::check_boundaries::CheckBoundariesOptions;
 use crate::commands::create_domain::CreateDomainOptions;
 use crate::commands::generate::{GenerateKind, GenerateOptions};
@@ -9,6 +10,7 @@ use crate::util::is_kebab_case;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum Command {
+    AddDependency(AddDependencyOptions),
     CheckBoundaries(CheckBoundariesOptions),
     CreateDomain(CreateDomainOptions),
     GraphDomains(GraphDomainsOptions),
@@ -22,6 +24,10 @@ pub(crate) fn parse_command(args: &[String]) -> Result<Command, String> {
     };
 
     match command.as_str() {
+        "add-dependency" => {
+            let options = parse_add_dependency_options(&args[1..])?;
+            Ok(Command::AddDependency(options))
+        }
         "check-boundaries" => {
             let options = parse_check_boundaries_options(&args[1..])?;
             Ok(Command::CheckBoundaries(options))
@@ -41,6 +47,39 @@ pub(crate) fn parse_command(args: &[String]) -> Result<Command, String> {
         "help" | "--help" | "-h" => Ok(Command::Help),
         _ => Err(format!("unknown command: {command}")),
     }
+}
+
+fn parse_add_dependency_options(args: &[String]) -> Result<AddDependencyOptions, String> {
+    let Some(resource) = args.first() else {
+        return Err("missing dependency resource".to_string());
+    };
+    let (domain, dependency) = parse_dependency_resource(resource)?;
+    let mut options = AddDependencyOptions {
+        domain,
+        dependency,
+        root: PathBuf::from("."),
+    };
+    let mut index = 1;
+
+    while index < args.len() {
+        let arg = &args[index];
+        if arg == "--root" {
+            let Some(value) = args.get(index + 1) else {
+                return Err("missing value for --root".to_string());
+            };
+            options.root = PathBuf::from(value);
+            index += 2;
+            continue;
+        }
+        if let Some(value) = arg.strip_prefix("--root=") {
+            options.root = PathBuf::from(value);
+            index += 1;
+            continue;
+        }
+        return Err(format!("unknown option: {arg}"));
+    }
+
+    Ok(options)
 }
 
 fn parse_check_boundaries_options(args: &[String]) -> Result<CheckBoundariesOptions, String> {
@@ -272,4 +311,20 @@ fn parse_generate_resource(value: &str) -> Result<(String, String), String> {
     }
 
     Ok((domain.to_string(), name.to_string()))
+}
+
+fn parse_dependency_resource(value: &str) -> Result<(String, String), String> {
+    let mut parts = value.split('/');
+    let Some(domain) = parts.next() else {
+        return Err("dependency resource must be <domain>/<dependency>".to_string());
+    };
+    let Some(dependency) = parts.next() else {
+        return Err("dependency resource must be <domain>/<dependency>".to_string());
+    };
+
+    if parts.next().is_some() || !is_kebab_case(domain) || !is_kebab_case(dependency) {
+        return Err("dependency resource must be <kebab-domain>/<kebab-dependency>".to_string());
+    }
+
+    Ok((domain.to_string(), dependency.to_string()))
 }

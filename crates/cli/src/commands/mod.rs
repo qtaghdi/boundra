@@ -1,3 +1,5 @@
+#[path = "add-dependency.rs"]
+pub mod add_dependency;
 #[path = "check-boundaries.rs"]
 pub mod check_boundaries;
 #[path = "create-domain.rs"]

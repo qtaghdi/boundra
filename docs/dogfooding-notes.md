@@ -1,5 +1,90 @@
 # Dogfooding Notes
 
+## 2026-07-01: Repeatable TypeScript Dogfood Slice
+
+### Goal
+
+Turn the temporary sandbox validation into a committed, repeatable TypeScript
+consumer flow. This slice must validate generated contracts with the TypeScript
+compiler, not only with Rust fixture assertions.
+
+### Scope
+
+- add the minimum pnpm workspace and TypeScript configuration
+- create `order` and `billing` through `create-domain`
+- generate one route, query, and mutation through the Boundra CLI
+- consume generated public contracts from `apps/dogfood`
+- declare `billing -> order` in the billing manifest
+- keep the app framework-neutral; do not add Next.js, React, an ORM, or a new
+  runtime abstraction
+
+### Acceptance Criteria
+
+The slice is complete when all of the following commands pass against committed
+files:
+
+```bash
+pnpm typecheck
+cargo test --workspace
+cargo run -p boundra-cli -- check-boundaries --root . --format json
+cargo run -p boundra-cli -- graph-domains --root . --format json
+```
+
+The graph output must contain `billing -> order`, generated contracts must be
+registered in each domain manifest, and the dogfood app must import contracts
+through their declared public API paths.
+
+### Learning Target
+
+Record concrete friction around generated placeholder types, runtime helpers,
+manifest edits, and public API imports. Use those observations as input to the
+schema-backed codegen specification instead of choosing a schema model in
+advance.
+
+### Result
+
+The committed slice passes all acceptance commands:
+
+- the TypeScript compiler resolves generated contracts and `@boundra/runtime`
+- `apps/dogfood` consumes the three manifest-declared shared contracts
+- a billing server workflow imports an order contract through its declared
+  public API without a BR-004 violation
+- the graph contains the `billing -> order` edge
+- `pnpm verify-dogfood` repeats the complete local and CI validation path
+
+### Observed Friction
+
+- `dependsOn` still requires a manual manifest edit; there is no CLI workflow
+  for declaring a domain dependency
+- generated input and result types are `Record<string, never>`, so they prove
+  wiring but cannot model a useful feature yet
+- generated query and mutation hooks are compile-safe placeholders rather than
+  executable client adapters
+- consumers import manifest-listed contract files directly because generation
+  does not maintain a shared public barrel
+
+### Next Decision
+
+Define schema-backed codegen from these constraints. The specification must
+choose the contract source of truth, generated-file ownership, and public export
+strategy before implementation. Separately specify how domain dependencies are
+added without manual manifest editing.
+
+### Resolution
+
+The follow-up framework slice resolved the four observed gaps:
+
+- contracts now use Zod input/result schemas with inferred TypeScript types
+- `@boundra/runtime` validates client transport and server handler boundaries
+- generated query/mutation files are executable framework-neutral client
+  adapters
+- generation maintains `shared/public.ts` exports
+- `add-dependency <domain>/<dependency>` updates `dependsOn` idempotently
+- CLI and runtime failures now expose stable codes and recovery suggestions
+
+The dogfood command executes valid route/query/mutation flows and verifies an
+invalid input produces `RUNTIME-001`.
+
 ## 2026-06-16
 
 ### What Was Tested

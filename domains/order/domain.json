@@ -1,0 +1,23 @@
+{
+  "$schema": "https://boundra.dev/schemas/domain-manifest.v1.json",
+  "dependsOn": [],
+  "name": "order",
+  "policies": {
+    "allowCrossDomainServerImport": false,
+    "allowMcpWrite": false
+  },
+  "publicApi": {
+    "client": [
+      "./client/public.ts"
+    ],
+    "server": [
+      "./server/public.ts"
+    ],
+    "shared": [
+      "./shared/public.ts",
+      "./shared/contracts/get-order.ts",
+      "./shared/contracts/submit-order.ts"
+    ]
+  },
+  "version": "0.1.0"
+}

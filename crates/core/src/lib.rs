@@ -367,7 +367,7 @@ fn load_tsconfig_path_aliases(root: &Path) -> io::Result<Vec<PathAlias>> {
 
     // 더 구체적인 alias가 먼저 매칭되도록 긴 prefix를 우선한다.
     // 예: "@/domains/*"가 "@/*"보다 먼저 처리되어야 한다.
-    aliases.sort_by(|left, right| right.prefix.len().cmp(&left.prefix.len()));
+    aliases.sort_by_key(|alias| std::cmp::Reverse(alias.prefix.len()));
     Ok(aliases)
 }
 

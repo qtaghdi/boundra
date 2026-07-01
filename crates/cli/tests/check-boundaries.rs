@@ -38,6 +38,50 @@ fn parse_json_stdout(output: &Output) -> Value {
     serde_json::from_slice(&output.stdout).expect("stdout should be valid JSON")
 }
 
+#[test]
+fn help_lists_the_complete_v1_command_surface() {
+    let root = create_temp_dir("help-output");
+    let output = run_boundra(&root, &["--help"]);
+    let stdout = String::from_utf8_lossy(&output.stdout);
+
+    assert_eq!(output.status.code(), Some(0));
+    for command in [
+        "add-dependency",
+        "check-boundaries",
+        "create-domain",
+        "generate route|query|mutation",
+        "graph-domains",
+    ] {
+        assert!(stdout.contains(command), "help should list {command}");
+    }
+}
+
+#[test]
+fn missing_command_prints_actionable_diagnostic() {
+    let root = create_temp_dir("missing-command");
+    let output = run_boundra(&root, &[]);
+    let stderr = String::from_utf8_lossy(&output.stderr);
+
+    assert_eq!(output.status.code(), Some(2));
+    assert!(stderr.contains("[ERROR] CLI-001"));
+    assert!(stderr.contains("boundra --help"));
+}
+
+#[test]
+fn usage_errors_are_json_when_json_is_requested() {
+    let root = create_temp_dir("json-usage-error");
+    let output = run_boundra(
+        &root,
+        &["check-boundaries", "--format", "json", "--unknown"],
+    );
+    let json = parse_json_stdout(&output);
+
+    assert_eq!(output.status.code(), Some(2));
+    assert_eq!(json["status"], "error");
+    assert_eq!(json["errors"][0]["code"], "CLI-001");
+    assert_eq!(json["meta"]["command"], "check-boundaries");
+}
+
 fn write_domain_manifest(root: &Path, domain: &str, name: &str, depends_on: &[&str]) {
     let depends_on = depends_on
         .iter()
@@ -215,7 +259,8 @@ fn create_domain_rejects_non_kebab_case_name() {
     let stderr = String::from_utf8_lossy(&output.stderr);
 
     assert_eq!(output.status.code(), Some(2));
-    assert!(stderr.contains("domain names must use kebab-case"));
+    assert!(stderr.contains("[ERROR] DOMAIN-001"));
+    assert!(stderr.contains("use a kebab-case name"));
 }
 
 #[test]
@@ -478,9 +523,20 @@ fn generate_route_scaffolds_contract_and_server_route() {
     let contract =
         fs::read_to_string(root.join("domains/billing/shared/contracts/create-invoice.ts"))
             .expect("failed to read generated route contract");
-    assert!(contract.contains("import type { BoundraRoute } from '@boundra/runtime';"));
+    assert!(contract.contains("defineRoute, type InferSchema"));
+    assert!(contract.contains("import { z } from \"zod\";"));
+    assert!(contract.contains("createInvoiceInputSchema = z.object({})"));
     assert!(contract.contains("export const createInvoiceRoute"));
-    assert!(contract.contains("kind: 'route'"));
+    assert!(contract.contains("input: createInvoiceInputSchema"));
+
+    let route = fs::read_to_string(root.join("domains/billing/server/routes/create-invoice.ts"))
+        .expect("failed to read generated route implementation");
+    assert!(route.contains("implementRoute"));
+    assert!(route.contains("createInvoiceRoute"));
+
+    let public_api = fs::read_to_string(root.join("domains/billing/shared/public.ts"))
+        .expect("failed to read shared public API");
+    assert!(public_api.contains("export * from \"./contracts/create-invoice\";"));
 
     let manifest = fs::read_to_string(root.join("domains/billing/domain.json"))
         .expect("failed to read domain manifest");
@@ -493,8 +549,8 @@ fn generate_route_scaffolds_contract_and_server_route() {
 }
 
 #[test]
-fn generate_query_and_mutation_scaffold_client_hooks() {
-    let root = create_temp_dir("generate-client-hooks");
+fn generate_query_and_mutation_scaffold_client_adapters() {
+    let root = create_temp_dir("generate-client-adapters");
 
     let create_output = run_boundra(&root, &["create-domain", "billing"]);
     assert_eq!(create_output.status.code(), Some(0));
@@ -505,10 +561,10 @@ fn generate_query_and_mutation_scaffold_client_hooks() {
     assert_eq!(query_output.status.code(), Some(0));
     assert_eq!(mutation_output.status.code(), Some(0));
     assert!(root
-        .join("domains/billing/client/queries/use-list-invoices.ts")
+        .join("domains/billing/client/queries/list-invoices.ts")
         .exists());
     assert!(root
-        .join("domains/billing/client/mutations/use-pay-invoice.ts")
+        .join("domains/billing/client/mutations/pay-invoice.ts")
         .exists());
     assert!(root
         .join("domains/billing/shared/contracts/list-invoices.ts")
@@ -524,12 +580,26 @@ fn generate_query_and_mutation_scaffold_client_hooks() {
         fs::read_to_string(root.join("domains/billing/shared/contracts/pay-invoice.ts"))
             .expect("failed to read generated mutation contract");
 
-    assert!(query_contract.contains("import type { BoundraQuery } from '@boundra/runtime';"));
+    assert!(query_contract.contains("defineQuery, type InferSchema"));
+    assert!(query_contract.contains("listInvoicesInputSchema = z.object({})"));
     assert!(query_contract.contains("export const listInvoicesQuery"));
-    assert!(query_contract.contains("kind: 'query'"));
-    assert!(mutation_contract.contains("import type { BoundraMutation } from '@boundra/runtime';"));
+    assert!(mutation_contract.contains("defineMutation, type InferSchema"));
+    assert!(mutation_contract.contains("payInvoiceResultSchema = z.object({})"));
     assert!(mutation_contract.contains("export const payInvoiceMutation"));
-    assert!(mutation_contract.contains("kind: 'mutation'"));
+
+    let query_adapter =
+        fs::read_to_string(root.join("domains/billing/client/queries/list-invoices.ts"))
+            .expect("failed to read generated query adapter");
+    let mutation_adapter =
+        fs::read_to_string(root.join("domains/billing/client/mutations/pay-invoice.ts"))
+            .expect("failed to read generated mutation adapter");
+    assert!(query_adapter.contains("client.query(listInvoicesQuery, input)"));
+    assert!(mutation_adapter.contains("client.mutation(payInvoiceMutation, input)"));
+
+    let public_api = fs::read_to_string(root.join("domains/billing/shared/public.ts"))
+        .expect("failed to read shared public API");
+    assert!(public_api.contains("export * from \"./contracts/list-invoices\";"));
+    assert!(public_api.contains("export * from \"./contracts/pay-invoice\";"));
 
     let manifest = fs::read_to_string(root.join("domains/billing/domain.json"))
         .expect("failed to read domain manifest");
@@ -556,5 +626,103 @@ fn generate_rejects_unknown_domain() {
     let stderr = String::from_utf8_lossy(&output.stderr);
 
     assert_eq!(output.status.code(), Some(2));
-    assert!(stderr.contains("unknown domain: billing"));
+    assert!(stderr.contains("[ERROR] DOMAIN-004"));
+    assert!(stderr.contains("unknown domain 'billing'"));
+    assert!(stderr.contains("boundra create-domain billing"));
+}
+
+#[test]
+fn generate_conflict_does_not_leave_partial_contract() {
+    let root = create_temp_dir("generate-conflict");
+    assert_eq!(
+        run_boundra(&root, &["create-domain", "billing"])
+            .status
+            .code(),
+        Some(0)
+    );
+    let adapter_path = root.join("domains/billing/client/queries/list-invoices.ts");
+    fs::create_dir_all(adapter_path.parent().expect("adapter should have a parent"))
+        .expect("failed to create adapter directory");
+    fs::write(&adapter_path, "export {};\n").expect("failed to write conflicting adapter");
+
+    let output = run_boundra(&root, &["generate", "query", "billing/list-invoices"]);
+    let stderr = String::from_utf8_lossy(&output.stderr);
+
+    assert_eq!(output.status.code(), Some(2));
+    assert!(stderr.contains("[ERROR] GEN-001"));
+    assert!(stderr.contains("never overwrites"));
+    assert!(!root
+        .join("domains/billing/shared/contracts/list-invoices.ts")
+        .exists());
+
+    let public_api = fs::read_to_string(root.join("domains/billing/shared/public.ts"))
+        .expect("failed to read shared public API");
+    assert_eq!(public_api, "export {};\n");
+}
+
+#[test]
+fn add_dependency_updates_manifest_idempotently() {
+    let root = create_temp_dir("add-dependency");
+    assert_eq!(
+        run_boundra(&root, &["create-domain", "billing"])
+            .status
+            .code(),
+        Some(0)
+    );
+    assert_eq!(
+        run_boundra(&root, &["create-domain", "order"])
+            .status
+            .code(),
+        Some(0)
+    );
+
+    let first = run_boundra(&root, &["add-dependency", "billing/order"]);
+    let second = run_boundra(&root, &["add-dependency", "billing/order"]);
+    let second_stdout = String::from_utf8_lossy(&second.stdout);
+
+    assert_eq!(first.status.code(), Some(0));
+    assert_eq!(second.status.code(), Some(0));
+    assert!(second_stdout.contains("already declared"));
+
+    let manifest = fs::read_to_string(root.join("domains/billing/domain.json"))
+        .expect("failed to read billing manifest");
+    let manifest_json: Value = serde_json::from_str(&manifest).expect("manifest should be JSON");
+    assert_eq!(manifest_json["dependsOn"], serde_json::json!(["order"]));
+}
+
+#[test]
+fn add_dependency_rejects_self_dependency() {
+    let root = create_temp_dir("self-dependency");
+    assert_eq!(
+        run_boundra(&root, &["create-domain", "billing"])
+            .status
+            .code(),
+        Some(0)
+    );
+
+    let output = run_boundra(&root, &["add-dependency", "billing/billing"]);
+    let stderr = String::from_utf8_lossy(&output.stderr);
+
+    assert_eq!(output.status.code(), Some(2));
+    assert!(stderr.contains("[ERROR] DEPENDENCY-001"));
+    assert!(stderr.contains("cannot depend on itself"));
+}
+
+#[test]
+fn check_boundaries_keeps_project_errors_machine_readable() {
+    let root = create_temp_dir("json-project-error");
+    fs::create_dir_all(root.join("domains")).expect("failed to create domains root");
+    fs::write(root.join("boundra.config.json"), "{ invalid json")
+        .expect("failed to write invalid config");
+
+    let output = run_boundra(&root, &["check-boundaries", "--format", "json"]);
+    let json = parse_json_stdout(&output);
+
+    assert_eq!(output.status.code(), Some(2));
+    assert_eq!(json["status"], "error");
+    assert_eq!(json["errors"][0]["code"], "PROJECT-001");
+    assert!(json["errors"][0]["suggestion"]
+        .as_str()
+        .is_some_and(|value| value.contains("fix the reported config")));
+    assert_eq!(json["meta"]["command"], "check-boundaries");
 }
