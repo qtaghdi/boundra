@@ -151,5 +151,5 @@ cargo run -p boundra-cli -- check-boundaries --root examples/order-billing --for
 CI 실행:
 
 ```bash
-cargo run -p boundra-cli -- check-boundaries --root examples/order-billing --format json
+pnpm verify-example
 ```
