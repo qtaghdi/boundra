@@ -27,6 +27,11 @@
 - [solo-convention.md](solo-convention.md)
 - [ci-integration.md](ci-integration.md)
 
+## Releases
+
+- [v0.1.0](releases/v0-1-0.md)
+- [v0.1.1](releases/v0-1-1.md)
+
 ## Vocabulary and Decisions
 
 - [glossary.md](glossary.md)

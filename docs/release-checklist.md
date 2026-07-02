@@ -26,6 +26,8 @@
 - [x] MIT `LICENSE`
 - [x] `SECURITY.md`
 - [x] `CHANGELOG.md`
+- [x] versioned `v0.1.0` and `v0.1.1` release notes
+- [x] PR and tag workflows validate the release-note format
 - [x] public quickstart and CLI install guide
 - [x] Node and native target support matrix
 - [x] npm trusted-publishing workflow with provenance is configured
