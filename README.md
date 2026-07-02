@@ -112,6 +112,7 @@ crates/
 - `add-dependency` manages domain graph declarations without manual JSON edits.
 - CLI failures include stable codes, context, suggestions, and JSON output where requested.
 - Runtime validation failures expose field paths and messages without coupling consumers to Zod internals.
+- `boundra/vite` provides a development-only runtime and boundary error overlay.
 - `examples/order-billing` is a committed two-domain generated-contract flow.
 - `pnpm verify-example` repeats TypeScript, runtime, Rust, boundary, and graph validation.
 - CLI fixture tests cover text/json output, boundary behavior, scaffolding, graph output, code generation, and manifest updates.
