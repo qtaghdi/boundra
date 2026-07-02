@@ -7,10 +7,21 @@ pub fn check_boundaries(imports: &[ImportRecord]) -> Vec<Violation> {
     check_boundaries_with_context(imports, &BoundaryContext::default())
 }
 
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BoundaryContext {
+    pub apps_path: String,
     pub domains: BTreeMap<String, DomainManifest>,
     pub path_aliases: Vec<PathAlias>,
+}
+
+impl Default for BoundaryContext {
+    fn default() -> Self {
+        Self {
+            apps_path: "apps".to_string(),
+            domains: BTreeMap::new(),
+            path_aliases: Vec::new(),
+        }
+    }
 }
 
 pub fn check_boundaries_with_context(
@@ -85,6 +96,24 @@ pub fn check_boundaries_with_context(
                 import_path: record.import_path.clone(),
                 message: "domains cannot import another domain's internal path".to_string(),
                 suggestion: "import from the target domain's public API instead".to_string(),
+            });
+        }
+
+        if is_app_internal_import(
+            &record.source_file,
+            &source_domain,
+            &target_domain,
+            &target,
+            context,
+        ) {
+            violations.push(Violation {
+                rule: RuleCode::Br005,
+                file: record.source_file.clone(),
+                line: record.line,
+                import_path: record.import_path.clone(),
+                message: "apps cannot import a domain's internal path".to_string(),
+                suggestion: "import from the target domain's declared public API instead"
+                    .to_string(),
             });
         }
     }
@@ -164,6 +193,35 @@ fn is_cross_domain_internal_import(
     }
 
     !is_public_api_path(target_domain, target_path, context)
+}
+
+fn is_app_internal_import(
+    source_file: &str,
+    source_domain: &str,
+    target_domain: &str,
+    target_path: &str,
+    context: &BoundaryContext,
+) -> bool {
+    if !source_domain.is_empty()
+        || target_domain.is_empty()
+        || !is_within_path(source_file, &context.apps_path)
+    {
+        return false;
+    }
+
+    !is_public_api_path(target_domain, target_path, context)
+}
+
+fn is_within_path(path: &str, root: &str) -> bool {
+    let normalized_path = normalize_path(path);
+    let normalized_root = normalize_path(root).trim_end_matches('/').to_string();
+
+    if normalized_root.is_empty() {
+        return true;
+    }
+
+    normalized_path == normalized_root
+        || normalized_path.starts_with(&format!("{normalized_root}/"))
 }
 
 fn is_shared_runtime_dependency(import_path: &str, resolved_target: Option<&str>) -> bool {
@@ -394,6 +452,7 @@ mod tests {
             import_path: "../../billing/server/public".to_string(),
         }];
         let context = BoundaryContext {
+            apps_path: "apps".to_string(),
             domains: BTreeMap::from([(
                 "billing".to_string(),
                 DomainManifest {
@@ -435,6 +494,7 @@ mod tests {
             import_path: "@domains/order/server/checkout".to_string(),
         }];
         let context = BoundaryContext {
+            apps_path: "apps".to_string(),
             domains: BTreeMap::new(),
             path_aliases: vec![PathAlias {
                 prefix: "@domains/".to_string(),
@@ -445,5 +505,103 @@ mod tests {
         let violations = check_boundaries_with_context(&imports, &context);
         assert_eq!(violations.len(), 1);
         assert_eq!(violations[0].rule, RuleCode::Br001);
+    }
+
+    #[test]
+    fn detects_br_005_for_app_to_domain_internal_import() {
+        let imports = vec![ImportRecord {
+            source_file: "apps/web/src/checkout.ts".to_string(),
+            source_dir: "apps/web/src".to_string(),
+            line: 4,
+            import_path: "../../../domains/order/server/internal/checkout".to_string(),
+        }];
+        let context = BoundaryContext {
+            apps_path: "apps".to_string(),
+            domains: BTreeMap::from([(
+                "order".to_string(),
+                DomainManifest {
+                    name: "order".to_string(),
+                    public_api: PublicApi {
+                        client: vec!["./client/public.ts".to_string()],
+                        server: vec!["./server/public.ts".to_string()],
+                        shared: vec!["./shared/public.ts".to_string()],
+                    },
+                    depends_on: Vec::new(),
+                },
+            )]),
+            path_aliases: Vec::new(),
+        };
+
+        let violations = check_boundaries_with_context(&imports, &context);
+        assert_eq!(violations.len(), 1);
+        assert_eq!(violations[0].rule, RuleCode::Br005);
+    }
+
+    #[test]
+    fn allows_app_to_domain_declared_public_api_import() {
+        let imports = vec![ImportRecord {
+            source_file: "frontend/web/src/checkout.ts".to_string(),
+            source_dir: "frontend/web/src".to_string(),
+            line: 1,
+            import_path: "../../../domains/order/client/public".to_string(),
+        }];
+        let context = BoundaryContext {
+            apps_path: "frontend".to_string(),
+            domains: BTreeMap::from([(
+                "order".to_string(),
+                DomainManifest {
+                    name: "order".to_string(),
+                    public_api: PublicApi {
+                        client: vec!["./client/public.ts".to_string()],
+                        server: Vec::new(),
+                        shared: Vec::new(),
+                    },
+                    depends_on: Vec::new(),
+                },
+            )]),
+            path_aliases: Vec::new(),
+        };
+
+        let violations = check_boundaries_with_context(&imports, &context);
+        assert!(violations.is_empty());
+    }
+
+    #[test]
+    fn detects_root_app_without_treating_domain_sources_as_apps() {
+        let imports = vec![
+            ImportRecord {
+                source_file: "src/main.ts".to_string(),
+                source_dir: "src".to_string(),
+                line: 1,
+                import_path: "../domains/order/server/internal/checkout".to_string(),
+            },
+            ImportRecord {
+                source_file: "domains/order/server/service.ts".to_string(),
+                source_dir: "domains/order/server".to_string(),
+                line: 1,
+                import_path: "./internal/checkout".to_string(),
+            },
+        ];
+        let context = BoundaryContext {
+            apps_path: ".".to_string(),
+            domains: BTreeMap::from([(
+                "order".to_string(),
+                DomainManifest {
+                    name: "order".to_string(),
+                    public_api: PublicApi {
+                        client: Vec::new(),
+                        server: Vec::new(),
+                        shared: Vec::new(),
+                    },
+                    depends_on: Vec::new(),
+                },
+            )]),
+            path_aliases: Vec::new(),
+        };
+
+        let violations = check_boundaries_with_context(&imports, &context);
+        assert_eq!(violations.len(), 1);
+        assert_eq!(violations[0].rule, RuleCode::Br005);
+        assert_eq!(violations[0].file, "src/main.ts");
     }
 }

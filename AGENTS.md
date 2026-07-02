@@ -60,11 +60,13 @@ crates/
 - `server -> client` import 금지 (BR-002)
 - `shared -> UI/DB/infra runtime` 의존 금지 (BR-003)
 - 도메인 간 내부 경로 직접 import 금지, public API만 허용 (BR-004)
+- 앱에서 도메인 내부 경로 직접 import 금지, public API만 허용 (BR-005)
 
 허용:
 - `client -> shared`
 - `server -> shared`
 - `domain -> other-domain public API`
+- `app -> domain public API`
 
 ## 6. Agent Working Agreement
 

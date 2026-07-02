@@ -103,7 +103,7 @@ crates/
 
 - Repository bootstrap is complete.
 - Core documentation and conventions are drafted.
-- Rust workspace and `check-boundaries` MVP are available for BR-001 through BR-004.
+- Rust workspace and `check-boundaries` are available for BR-001 through BR-005.
 - `create-domain`, `graph-domains`, and initial `generate` workflows are available.
 - `packages/runtime` provides the first TypeScript helper surface for generated contracts.
 - Generated route/query/mutation contracts are registered in `domain.json` `publicApi.shared`.
@@ -111,6 +111,7 @@ crates/
 - `boundra` validates client transports and server handlers.
 - `add-dependency` manages domain graph declarations without manual JSON edits.
 - CLI failures include stable codes, context, suggestions, and JSON output where requested.
+- Runtime validation failures expose field paths and messages without coupling consumers to Zod internals.
 - `examples/order-billing` is a committed two-domain generated-contract flow.
 - `pnpm verify-example` repeats TypeScript, runtime, Rust, boundary, and graph validation.
 - CLI fixture tests cover text/json output, boundary behavior, scaffolding, graph output, code generation, and manifest updates.

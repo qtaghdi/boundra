@@ -6,6 +6,11 @@ The format follows Keep a Changelog and versions follow Semantic Versioning.
 
 ## [Unreleased]
 
+### Added
+
+- BR-005 enforcement for app imports that bypass a domain's declared public API
+- provider-neutral validation issues and safe JSON serialization for runtime errors
+
 ## [0.1.1] - 2026-07-02
 
 ### Added

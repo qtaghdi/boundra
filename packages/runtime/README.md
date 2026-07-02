@@ -20,5 +20,20 @@ on a structural `parse(unknown)` contract.
 - `executeContract`
 - `BoundraRuntimeError`
 
+Validation failures include provider-neutral field issues:
+
+```ts
+try {
+  await client.mutation(createTaskMutation, input);
+} catch (error) {
+  if (error instanceof BoundraRuntimeError) {
+    console.log(error.code, error.issues[0]?.path, error.issues[0]?.message);
+  }
+}
+```
+
+`error.toJSON()` returns a safe diagnostic shape without the original input or
+internal `cause`, suitable for development overlays and application error UIs.
+
 See the repository documentation for CLI installation, contract generation,
 and host integration.

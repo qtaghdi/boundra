@@ -65,6 +65,37 @@ compatible.
 - `GEN-*`: generated artifact and public API update errors
 - `RUNTIME-*`: TypeScript contract execution errors
 
+## 5. Runtime Validation Issues
+
+`BoundraRuntimeError`는 framework adapter와 개발 오버레이가 특정 schema
+provider에 의존하지 않도록 정규화된 `issues`를 제공한다.
+
+```json
+{
+  "name": "BoundraRuntimeError",
+  "code": "RUNTIME-001",
+  "contract": "create-task",
+  "phase": "input",
+  "message": "contract 'create-task' rejected input at 'title': 제목은 두 글자 이상 입력해 주세요.",
+  "suggestion": "fix input field 'title': 제목은 두 글자 이상 입력해 주세요.",
+  "issues": [
+    {
+      "code": "too_small",
+      "path": ["title"],
+      "message": "제목은 두 글자 이상 입력해 주세요."
+    }
+  ]
+}
+```
+
+규칙:
+
+- `issues`는 항상 배열이며 validation issue가 없으면 빈 배열이다.
+- issue는 `code`, `path`, `message`만 안정적으로 노출한다.
+- 입력 원문이나 schema provider의 전체 오류 객체는 직렬화하지 않는다.
+- `toJSON()`은 위 구조를 반환하고 내부 `cause`는 제외한다.
+- runtime package는 Zod에 직접 의존하지 않고 구조적으로 호환되는 issue를 정규화한다.
+
 ## 5. Exit Codes
 
 - `0`: success
