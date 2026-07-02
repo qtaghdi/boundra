@@ -127,8 +127,8 @@ The first validation target is complete:
 - run `check-boundaries` and `graph-domains` during normal development
 - record missing APIs before adding extension scripting
 
-The committed `apps/dogfood` flow now covers these points and is verified by
-`pnpm verify-dogfood`. It exposed placeholder contract types, manual dependency
+The committed `examples/order-billing` flow now covers these points and is
+verified by `pnpm verify-example`. It exposed placeholder contract types, manual dependency
 declarations, and missing public export generation as the next design inputs.
 
 Those inputs are resolved by ADR 0002, schema-backed generated contracts, the

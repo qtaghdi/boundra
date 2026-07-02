@@ -5,7 +5,7 @@
 
 ## Context
 
-Boundra's internal dogfood runs from workspace source files and invokes the CLI
+Boundra's committed example runs from workspace source files and invokes the CLI
 through `cargo run`. That proves framework behavior but does not prove that a
 user can install or execute published artifacts outside the repository.
 

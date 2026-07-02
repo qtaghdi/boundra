@@ -1,0 +1,10 @@
+{
+  "name": "@boundra/example-order-billing",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@boundra/runtime": "workspace:*",
+    "zod": "^4.4.3"
+  }
+}

@@ -31,7 +31,7 @@
 - 도메인 경계를 위반하지 않는가?
 - 문서/명세 반영이 되었는가?
 - 테스트 또는 검증 방법이 포함되었는가?
-- `pnpm verify-dogfood`와 `cargo clippy --workspace --all-targets -- -D warnings`가 통과하는가?
+- `pnpm verify-example`과 `cargo clippy --workspace --all-targets -- -D warnings`가 통과하는가?
 - 패키징 변경이면 `pnpm verify-clean-room`이 통과하는가?
 
 ## 5. Code Standards

@@ -54,10 +54,10 @@ post-MVP framework slice.
 The first committed dogfood slice is complete:
 
 - `order` and `billing` were created through the Boundra CLI
-- route/query/mutation artifacts are consumed by `apps/dogfood`
+- route/query/mutation artifacts are consumed by `examples/order-billing`
 - generated contracts pass strict TypeScript compilation
 - `check-boundaries` and `graph-domains` run in the aggregate
-  `pnpm verify-dogfood` gate
+  `pnpm verify-example` gate
 - observed friction is recorded in `docs/dogfooding-notes.md`
 
 Dogfooding now executes schema validation, transport calls, and route handlers.

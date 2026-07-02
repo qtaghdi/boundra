@@ -1,5 +1,16 @@
 # Dogfooding Notes
 
+## 2026-07-01: Promote the Dogfood Slice to a Public Example
+
+The completed dogfood slice now has stable contracts, runtime behavior, and CI
+coverage. It is no longer only an internal fixture, so it lives at
+`examples/order-billing` as a self-contained Boundra project.
+
+The repository reserves `apps/` for real deployable products such as a web,
+admin, or API application. Example verification still exercises the same
+route/query/mutation flow, boundary rules, and domain graph through the example
+project root.
+
 ## 2026-07-01: Repeatable TypeScript Dogfood Slice
 
 ### Goal
@@ -13,7 +24,7 @@ compiler, not only with Rust fixture assertions.
 - add the minimum pnpm workspace and TypeScript configuration
 - create `order` and `billing` through `create-domain`
 - generate one route, query, and mutation through the Boundra CLI
-- consume generated public contracts from `apps/dogfood`
+- consume generated public contracts from `examples/order-billing`
 - declare `billing -> order` in the billing manifest
 - keep the app framework-neutral; do not add Next.js, React, an ORM, or a new
   runtime abstraction
@@ -26,12 +37,12 @@ files:
 ```bash
 pnpm typecheck
 cargo test --workspace
-cargo run -p boundra-cli -- check-boundaries --root . --format json
-cargo run -p boundra-cli -- graph-domains --root . --format json
+cargo run -p boundra-cli -- check-boundaries --root examples/order-billing --format json
+cargo run -p boundra-cli -- graph-domains --root examples/order-billing --format json
 ```
 
 The graph output must contain `billing -> order`, generated contracts must be
-registered in each domain manifest, and the dogfood app must import contracts
+registered in each domain manifest, and the example must import contracts
 through their declared public API paths.
 
 ### Learning Target
@@ -46,11 +57,11 @@ advance.
 The committed slice passes all acceptance commands:
 
 - the TypeScript compiler resolves generated contracts and `@boundra/runtime`
-- `apps/dogfood` consumes the three manifest-declared shared contracts
+- `examples/order-billing` consumes the three manifest-declared shared contracts
 - a billing server workflow imports an order contract through its declared
   public API without a BR-004 violation
 - the graph contains the `billing -> order` edge
-- `pnpm verify-dogfood` repeats the complete local and CI validation path
+- `pnpm verify-example` repeats the complete local and CI validation path
 
 ### Observed Friction
 
