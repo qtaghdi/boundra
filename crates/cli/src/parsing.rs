@@ -5,6 +5,7 @@ use crate::commands::check_boundaries::CheckBoundariesOptions;
 use crate::commands::create_domain::CreateDomainOptions;
 use crate::commands::generate::{GenerateKind, GenerateOptions};
 use crate::commands::graph_domains::{GraphDomainsOptions, GraphFormat};
+use crate::commands::init::InitOptions;
 use crate::output::OutputFormat;
 use crate::util::is_kebab_case;
 
@@ -15,6 +16,7 @@ pub(crate) enum Command {
     CreateDomain(CreateDomainOptions),
     GraphDomains(GraphDomainsOptions),
     Generate(GenerateOptions),
+    Init(InitOptions),
     Help,
     Version,
 }
@@ -45,10 +47,48 @@ pub(crate) fn parse_command(args: &[String]) -> Result<Command, String> {
             let options = parse_generate_options(&args[1..])?;
             Ok(Command::Generate(options))
         }
+        "init" => Ok(Command::Init(parse_init_options(&args[1..])?)),
         "help" | "--help" | "-h" => Ok(Command::Help),
         "--version" | "-V" => Ok(Command::Version),
         _ => Err(format!("unknown command: {command}")),
     }
+}
+
+fn parse_init_options(args: &[String]) -> Result<InitOptions, String> {
+    let mut options = InitOptions {
+        name: None,
+        root: PathBuf::from("."),
+    };
+    let mut index = 0;
+
+    while index < args.len() {
+        let arg = &args[index];
+        if arg == "--root" || arg == "--name" {
+            let Some(value) = args.get(index + 1) else {
+                return Err(format!("missing value for {arg}"));
+            };
+            if arg == "--root" {
+                options.root = PathBuf::from(value);
+            } else {
+                options.name = Some(value.clone());
+            }
+            index += 2;
+            continue;
+        }
+        if let Some(value) = arg.strip_prefix("--root=") {
+            options.root = PathBuf::from(value);
+            index += 1;
+            continue;
+        }
+        if let Some(value) = arg.strip_prefix("--name=") {
+            options.name = Some(value.to_string());
+            index += 1;
+            continue;
+        }
+        return Err(format!("unknown option: {arg}"));
+    }
+
+    Ok(options)
 }
 
 fn parse_add_dependency_options(args: &[String]) -> Result<AddDependencyOptions, String> {
