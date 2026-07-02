@@ -28,7 +28,7 @@ function run(command, args, options = {}) {
   const result = spawnSync(command, args, {
     cwd: options.cwd ?? repositoryRoot,
     encoding: "utf8",
-    env: process.env,
+    env: { ...process.env, ...options.env },
     stdio: options.capture ? "pipe" : "inherit",
   });
 
@@ -117,6 +117,12 @@ void client.query(getOrderQuery, {});
   run("pnpm", offline ? ["install", "--offline"] : ["install"], {
     cwd: project,
   });
+
+  run(
+    "pnpm",
+    ["exec", "boundra", "init", "--root", project, "--name", "boundra-clean-room"],
+    { cwd: project, env: { BOUNDRA_CLI_PATH: binary } },
+  );
 
   const cli = (...args) => run(binary, [...args, "--root", project]);
   cli("create-domain", "order");

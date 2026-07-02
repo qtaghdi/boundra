@@ -51,9 +51,36 @@ fn help_lists_the_complete_v1_command_surface() {
         "create-domain",
         "generate route|query|mutation",
         "graph-domains",
+        "init",
     ] {
         assert!(stdout.contains(command), "help should list {command}");
     }
+}
+
+#[test]
+fn init_creates_a_valid_non_destructive_workspace() {
+    let root = create_temp_dir("init-workspace");
+    let root_arg = root.to_string_lossy().to_string();
+
+    let output = run_boundra(&root, &["init", "--root", &root_arg, "--name", "task-app"]);
+    let stdout = String::from_utf8_lossy(&output.stdout);
+
+    assert_eq!(output.status.code(), Some(0));
+    assert!(stdout.contains("init: OK (task-app)"));
+    assert!(root.join("boundra.config.json").is_file());
+    assert!(root.join("apps").is_dir());
+    assert!(root.join("domains").is_dir());
+
+    let check = run_boundra(
+        &root,
+        &["check-boundaries", "--root", &root_arg, "--format", "json"],
+    );
+    assert_eq!(check.status.code(), Some(0));
+
+    let repeated = run_boundra(&root, &["init", "--root", &root_arg]);
+    let stderr = String::from_utf8_lossy(&repeated.stderr);
+    assert_eq!(repeated.status.code(), Some(2));
+    assert!(stderr.contains("[ERROR] PROJECT-003"));
 }
 
 #[test]

@@ -15,10 +15,14 @@
   },
   "sideEffects": false,
   "files": [
+    "bin",
     "dist",
     "README.md",
     "LICENSE"
   ],
+  "bin": {
+    "boundra": "./bin/boundra.mjs"
+  },
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {

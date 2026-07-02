@@ -9,6 +9,16 @@ is distributed separately through GitHub Releases during the public preview.
 pnpm add boundra zod
 ```
 
+Initialize and run the native CLI through the same npm package:
+
+```bash
+pnpm exec boundra init
+pnpm exec boundra check-boundaries
+```
+
+The first CLI invocation downloads and verifies the matching native release.
+Set `BOUNDRA_CLI_PATH` to an existing binary in offline or controlled environments.
+
 Generated contracts use Zod for schema authoring while the runtime depends only
 on a structural `parse(unknown)` contract.
 
