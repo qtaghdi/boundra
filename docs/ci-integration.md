@@ -17,7 +17,7 @@ on:
 
 jobs:
   verify-example:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@stable
@@ -27,6 +27,8 @@ jobs:
       - run: corepack enable
       - run: pnpm install --frozen-lockfile
       - run: pnpm verify-example
+      - run: pnpm verify-clean-room
+      - run: cargo clippy --workspace --all-targets -- -D warnings
 ```
 
 ## Local Verification

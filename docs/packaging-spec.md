@@ -2,12 +2,10 @@
 
 ## 1. Release Units
 
-The workspace root package named `boundra` is not a release unit. It must keep
-`private: true` and reject direct `npm publish` attempts. The unscoped package
-name is reserved for a possible future CLI installer and must not contain a
-repository snapshot.
+The workspace root package named `boundra-workspace` is not a release unit. It
+must keep `private: true` and reject direct `npm publish` attempts.
 
-### `@boundra/runtime`
+### `boundra`
 
 Public npm package containing:
 
@@ -53,7 +51,7 @@ does not incorrectly raise the runtime's minimum Node.js version.
 - `engines.node >= 20`
 - public access metadata
 
-`pnpm --filter @boundra/runtime pack` must contain only the intended public
+`pnpm --filter boundra pack` must contain only the intended public
 files, and a fresh project must be able to import every public runtime export.
 
 Tag releases publish through npm trusted publishing on a GitHub-hosted runner
@@ -84,7 +82,8 @@ A temporary project outside the repository must:
 
 ## 6. Versioning
 
-- preview version starts at `0.1.0`
+- first usable preview version is `0.1.1`; `boundra@0.1.0` is an accidental
+  repository snapshot and is not a supported release
 - breaking generated-code, diagnostic, or manifest changes increment the minor
   version while the project remains below `1.0.0`
 - release tags use `v<version>`

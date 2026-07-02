@@ -1,4 +1,4 @@
-import { implementRoute } from "@boundra/runtime";
+import { implementRoute } from "boundra";
 
 import { createInvoiceRoute } from "../../shared/contracts/create-invoice";
 

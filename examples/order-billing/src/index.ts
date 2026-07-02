@@ -3,7 +3,7 @@ import {
   createBoundraClient,
   executeContract,
   type BoundraTransport,
-} from "@boundra/runtime";
+} from "boundra";
 import { createInvoice } from "@domains/billing/server/routes/create-invoice";
 import { submitOrder } from "@domains/order/client/mutations/submit-order";
 import { getOrder } from "@domains/order/client/queries/get-order";

@@ -9,7 +9,7 @@
 ## Install the Runtime
 
 ```bash
-pnpm add @boundra/runtime zod
+pnpm add boundra zod
 ```
 
 ## Create a Project Flow

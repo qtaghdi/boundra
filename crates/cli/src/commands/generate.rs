@@ -205,7 +205,7 @@ fn scaffold_generated_artifact(
             write_new_file(
                 &contract_path,
                 &format!(
-                    "import {{ defineRoute, type InferSchema }} from \"@boundra/runtime\";\nimport {{ z }} from \"zod\";\n\nexport const {function_name}InputSchema = z.object({{}});\nexport const {function_name}ResultSchema = z.object({{}});\n\nexport type {type_name}Input = InferSchema<typeof {function_name}InputSchema>;\nexport type {type_name}Result = InferSchema<typeof {function_name}ResultSchema>;\n\nexport const {function_name}Route = defineRoute({{\n  name: \"{name}\",\n  input: {function_name}InputSchema,\n  result: {function_name}ResultSchema,\n}});\n",
+                    "import {{ defineRoute, type InferSchema }} from \"boundra\";\nimport {{ z }} from \"zod\";\n\nexport const {function_name}InputSchema = z.object({{}});\nexport const {function_name}ResultSchema = z.object({{}});\n\nexport type {type_name}Input = InferSchema<typeof {function_name}InputSchema>;\nexport type {type_name}Result = InferSchema<typeof {function_name}ResultSchema>;\n\nexport const {function_name}Route = defineRoute({{\n  name: \"{name}\",\n  input: {function_name}InputSchema,\n  result: {function_name}ResultSchema,\n}});\n",
                     name = options.name,
                     function_name = camel_case(&options.name)
                 ),
@@ -213,7 +213,7 @@ fn scaffold_generated_artifact(
             write_new_file(
                 &route_path,
                 &format!(
-                    "import {{ implementRoute }} from \"@boundra/runtime\";\n\nimport {{ {function_name}Route }} from \"../../shared/contracts/{name}\";\n\nexport const {function_name} = implementRoute(\n  {function_name}Route,\n  async (input) => {{\n    void input;\n    return {{}};\n  }},\n);\n",
+                    "import {{ implementRoute }} from \"boundra\";\n\nimport {{ {function_name}Route }} from \"../../shared/contracts/{name}\";\n\nexport const {function_name} = implementRoute(\n  {function_name}Route,\n  async (input) => {{\n    void input;\n    return {{}};\n  }},\n);\n",
                     name = options.name,
                     function_name = camel_case(&options.name)
                 ),
@@ -237,7 +237,7 @@ fn scaffold_generated_artifact(
             write_new_file(
                 &contract_path,
                 &format!(
-                    "import {{ defineQuery, type InferSchema }} from \"@boundra/runtime\";\nimport {{ z }} from \"zod\";\n\nexport const {function_name}InputSchema = z.object({{}});\nexport const {function_name}ResultSchema = z.object({{}});\n\nexport type {type_name}QueryInput = InferSchema<typeof {function_name}InputSchema>;\nexport type {type_name}QueryResult = InferSchema<typeof {function_name}ResultSchema>;\n\nexport const {function_name}Query = defineQuery({{\n  name: \"{name}\",\n  input: {function_name}InputSchema,\n  result: {function_name}ResultSchema,\n}});\n",
+                    "import {{ defineQuery, type InferSchema }} from \"boundra\";\nimport {{ z }} from \"zod\";\n\nexport const {function_name}InputSchema = z.object({{}});\nexport const {function_name}ResultSchema = z.object({{}});\n\nexport type {type_name}QueryInput = InferSchema<typeof {function_name}InputSchema>;\nexport type {type_name}QueryResult = InferSchema<typeof {function_name}ResultSchema>;\n\nexport const {function_name}Query = defineQuery({{\n  name: \"{name}\",\n  input: {function_name}InputSchema,\n  result: {function_name}ResultSchema,\n}});\n",
                     name = options.name,
                     function_name = camel_case(&options.name)
                 ),
@@ -245,7 +245,7 @@ fn scaffold_generated_artifact(
             write_new_file(
                 &query_path,
                 &format!(
-                    "import type {{ BoundraClient }} from \"@boundra/runtime\";\n\nimport {{\n  {function_name}Query,\n  type {type_name}QueryInput,\n}} from \"../../shared/contracts/{name}\";\n\nexport function {function_name}(\n  client: BoundraClient,\n  input: {type_name}QueryInput,\n) {{\n  return client.query({function_name}Query, input);\n}}\n",
+                    "import type {{ BoundraClient }} from \"boundra\";\n\nimport {{\n  {function_name}Query,\n  type {type_name}QueryInput,\n}} from \"../../shared/contracts/{name}\";\n\nexport function {function_name}(\n  client: BoundraClient,\n  input: {type_name}QueryInput,\n) {{\n  return client.query({function_name}Query, input);\n}}\n",
                     name = options.name,
                     function_name = camel_case(&options.name)
                 ),
@@ -269,7 +269,7 @@ fn scaffold_generated_artifact(
             write_new_file(
                 &contract_path,
                 &format!(
-                    "import {{ defineMutation, type InferSchema }} from \"@boundra/runtime\";\nimport {{ z }} from \"zod\";\n\nexport const {function_name}InputSchema = z.object({{}});\nexport const {function_name}ResultSchema = z.object({{}});\n\nexport type {type_name}MutationInput = InferSchema<typeof {function_name}InputSchema>;\nexport type {type_name}MutationResult = InferSchema<typeof {function_name}ResultSchema>;\n\nexport const {function_name}Mutation = defineMutation({{\n  name: \"{name}\",\n  input: {function_name}InputSchema,\n  result: {function_name}ResultSchema,\n}});\n",
+                    "import {{ defineMutation, type InferSchema }} from \"boundra\";\nimport {{ z }} from \"zod\";\n\nexport const {function_name}InputSchema = z.object({{}});\nexport const {function_name}ResultSchema = z.object({{}});\n\nexport type {type_name}MutationInput = InferSchema<typeof {function_name}InputSchema>;\nexport type {type_name}MutationResult = InferSchema<typeof {function_name}ResultSchema>;\n\nexport const {function_name}Mutation = defineMutation({{\n  name: \"{name}\",\n  input: {function_name}InputSchema,\n  result: {function_name}ResultSchema,\n}});\n",
                     name = options.name,
                     function_name = camel_case(&options.name)
                 ),
@@ -277,7 +277,7 @@ fn scaffold_generated_artifact(
             write_new_file(
                 &mutation_path,
                 &format!(
-                    "import type {{ BoundraClient }} from \"@boundra/runtime\";\n\nimport {{\n  {function_name}Mutation,\n  type {type_name}MutationInput,\n}} from \"../../shared/contracts/{name}\";\n\nexport function {function_name}(\n  client: BoundraClient,\n  input: {type_name}MutationInput,\n) {{\n  return client.mutation({function_name}Mutation, input);\n}}\n",
+                    "import type {{ BoundraClient }} from \"boundra\";\n\nimport {{\n  {function_name}Mutation,\n  type {type_name}MutationInput,\n}} from \"../../shared/contracts/{name}\";\n\nexport function {function_name}(\n  client: BoundraClient,\n  input: {type_name}MutationInput,\n) {{\n  return client.mutation({function_name}Mutation, input);\n}}\n",
                     name = options.name,
                     function_name = camel_case(&options.name)
                 ),

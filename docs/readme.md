@@ -31,3 +31,6 @@
 
 - [glossary.md](glossary.md)
 - [adr/0001-domain-first-architecture.md](adr/0001-domain-first-architecture.md)
+- [adr/0002-schema-contract-runtime.md](adr/0002-schema-contract-runtime.md)
+- [adr/0003-public-packaging.md](adr/0003-public-packaging.md)
+- [adr/0004-single-npm-package.md](adr/0004-single-npm-package.md)

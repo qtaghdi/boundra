@@ -16,7 +16,7 @@ interface, so the decision is recorded before implementation.
 ## Decision
 
 - Generated shared contracts define runtime input and result schemas with Zod.
-- `@boundra/runtime` accepts schemas structurally through a small
+- `boundra` accepts schemas structurally through a small
   `BoundraSchema<T>` interface and does not import Zod itself.
 - Contract types are inferred from schemas; generated TypeScript does not keep a
   second handwritten type definition.

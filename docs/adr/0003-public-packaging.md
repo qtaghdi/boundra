@@ -1,6 +1,6 @@
 # ADR 0003: Public Packaging
 
-- Status: Accepted
+- Status: Superseded by ADR 0004
 - Date: 2026-07-01
 
 ## Context

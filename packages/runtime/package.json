@@ -1,6 +1,6 @@
 {
-  "name": "@boundra/runtime",
-  "version": "0.1.0",
+  "name": "boundra",
+  "version": "0.1.1",
   "description": "Schema-backed runtime contracts for Boundra applications",
   "type": "module",
   "license": "MIT",
@@ -28,7 +28,7 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
-    "prepack": "pnpm build"
+    "prepack": "npm run build"
   },
   "engines": {
     "node": ">=20"

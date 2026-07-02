@@ -7,7 +7,7 @@
     "noEmit": true,
     "baseUrl": ".",
     "paths": {
-      "@boundra/runtime": ["../../packages/runtime/src/index.ts"],
+      "boundra": ["../../packages/runtime/src/index.ts"],
       "@domains/*": ["domains/*"]
     },
     "skipLibCheck": true
