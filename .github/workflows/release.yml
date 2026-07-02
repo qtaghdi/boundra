@@ -28,6 +28,7 @@ jobs:
           node-version: 24
       - run: corepack enable
       - run: pnpm install --frozen-lockfile
+      - run: pnpm check-release-notes "${RELEASE_VERSION}"
       - run: pnpm check-release-version "${RELEASE_VERSION}"
       - run: pnpm verify-example
       - run: pnpm verify-clean-room
@@ -138,4 +139,10 @@ jobs:
       - name: Publish GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "$GITHUB_REF_NAME" release/* --verify-tag --generate-notes
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          notes_file="docs/releases/v${version//./-}.md"
+          gh release create "$GITHUB_REF_NAME" release/* \
+            --verify-tag \
+            --title "Boundra $GITHUB_REF_NAME" \
+            --notes-file "$notes_file"

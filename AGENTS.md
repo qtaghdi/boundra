@@ -137,3 +137,27 @@ ADR 위치: `docs/adr/`
 
 - 표준: `kebab-case only`
 - 상세 규칙: `docs/naming-convention.md`
+
+## 14. Release Notes Policy
+
+- 릴리스 노트는 `docs/releases/v<major>-<minor>-<patch>.md`에 작성한다.
+  예: 태그 `v0.1.1`의 노트는 `docs/releases/v0-1-1.md`다.
+- 모든 릴리스 노트는 아래 섹션을 순서대로 포함한다.
+  1. `# Boundra v<semver>`
+  2. `## Release Summary`
+  3. `## Highlights`
+  4. `## Installation`
+  5. `## Breaking Changes`
+  6. `## Known Limitations`
+  7. `## Verification`
+- 릴리스 노트는 커밋 목록이 아니라 사용자 관점의 변화, 설치 방법,
+  호환성, 마이그레이션, 알려진 제약을 설명한다.
+- breaking change나 known limitation이 없더라도 해당 섹션을 생략하지
+  않고 `없음`이라고 명시한다.
+- 릴리스 준비 PR은 대상 버전의 릴리스 노트와 `CHANGELOG.md`를 함께
+  갱신해야 한다.
+- PR CI는 모든 릴리스 노트의 파일명과 필수 섹션을 검증한다.
+- `v*` 태그 릴리스는 대응하는 릴리스 노트 파일이 없으면 실패하며,
+  GitHub Release 본문은 해당 파일을 그대로 사용한다.
+- PR은 기본적으로 ready 상태로 생성한다. 사용자가 명시적으로 요청한
+  경우에만 draft PR을 생성한다.

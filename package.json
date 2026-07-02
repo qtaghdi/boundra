@@ -5,6 +5,7 @@
   "license": "MIT",
   "packageManager": "pnpm@11.7.0",
   "scripts": {
+    "check-release-notes": "node scripts/check-release-notes.mjs",
     "check-release-version": "node scripts/check-release-version.mjs",
     "example:order-billing": "tsx --tsconfig examples/order-billing/tsconfig.json examples/order-billing/src/index.ts",
     "prepublishOnly": "node scripts/reject-root-publish.mjs",

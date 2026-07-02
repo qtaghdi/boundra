@@ -6,6 +6,8 @@ The format follows Keep a Changelog and versions follow Semantic Versioning.
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-07-02
+
 ### Added
 
 - schema-backed route, query, and mutation contracts
@@ -15,9 +17,11 @@ The format follows Keep a Changelog and versions follow Semantic Versioning.
 - structured CLI diagnostics and machine-readable boundary output
 - clean-room packaging verification
 
-## [0.1.1] - Unreleased
+### Changed
 
-Initial public preview.
+- publish the TypeScript runtime through the single `boundra` npm package
+- distribute the native CLI through checksummed GitHub Release archives
+- generate contracts that import runtime APIs from `boundra`
 
 ## [0.1.0] - 2026-07-01
 
