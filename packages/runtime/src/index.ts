@@ -7,6 +7,8 @@ export {
 export {
   BoundraRuntimeError,
   type BoundraRuntimeErrorCode,
+  type BoundraRuntimeErrorJson,
+  type BoundraValidationIssue,
 } from "./errors.js";
 export {
   executeContract,

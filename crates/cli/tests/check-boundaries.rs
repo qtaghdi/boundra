@@ -470,6 +470,74 @@ fn check_boundaries_resolves_tsconfig_path_aliases() {
 }
 
 #[test]
+fn check_boundaries_rejects_app_to_domain_internal_import() {
+    let root = create_fixture("app-domain-internal");
+    write_domain_manifest(&root, "order", "order", &[]);
+    fs::create_dir_all(root.join("apps/web/src")).expect("failed to create app source");
+    fs::create_dir_all(root.join("domains/order/server/internal"))
+        .expect("failed to create order internal server path");
+    fs::write(
+        root.join("tsconfig.json"),
+        r#"{
+  "compilerOptions": {
+    "paths": {
+      "@domains/*": ["domains/*"]
+    }
+  }
+}
+"#,
+    )
+    .expect("failed to write tsconfig");
+    fs::write(
+        root.join("apps/web/src/checkout.ts"),
+        "import { checkout } from '@domains/order/server/internal/checkout';\n",
+    )
+    .expect("failed to write app fixture");
+    fs::write(
+        root.join("domains/order/server/internal/checkout.ts"),
+        "export const checkout = true;\n",
+    )
+    .expect("failed to write domain fixture");
+
+    let output = run_boundra(&root, &["check-boundaries", "--format", "json"]);
+    let json = parse_json_stdout(&output);
+
+    assert_eq!(output.status.code(), Some(1));
+    assert_eq!(json["violations"][0]["rule"], "BR-005");
+    assert_eq!(json["violations"][0]["file"], "apps/web/src/checkout.ts");
+}
+
+#[test]
+fn check_boundaries_allows_app_to_declared_domain_public_api() {
+    let root = create_fixture("app-domain-public");
+    write_domain_manifest(&root, "order", "order", &[]);
+    fs::create_dir_all(root.join("apps/web/src")).expect("failed to create app source");
+    fs::write(
+        root.join("tsconfig.json"),
+        r#"{
+  "compilerOptions": {
+    "paths": {
+      "@domains/*": ["domains/*"]
+    }
+  }
+}
+"#,
+    )
+    .expect("failed to write tsconfig");
+    fs::write(
+        root.join("apps/web/src/main.ts"),
+        "import '@domains/order/shared/public';\n",
+    )
+    .expect("failed to write app fixture");
+
+    let output = run_boundra(&root, &["check-boundaries", "--format", "json"]);
+    let json = parse_json_stdout(&output);
+
+    assert_eq!(output.status.code(), Some(0));
+    assert_eq!(json["status"], "passed");
+}
+
+#[test]
 fn graph_domains_outputs_json_dependency_graph() {
     let root = create_temp_dir("graph-json");
     write_domain_manifest(&root, "billing", "billing", &[]);

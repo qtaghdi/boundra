@@ -55,6 +55,9 @@ creation and are never overwritten.
 - server route execution parses input before the handler and parses the handler
   result before returning
 - missing handlers and schema parse failures surface typed runtime errors
+- schema parse failures expose provider-neutral field issues through
+  `BoundraRuntimeError.issues`
+- serialized runtime errors omit the original input and internal `cause`
 
 ## 5. Public Exports
 

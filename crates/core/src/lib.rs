@@ -12,6 +12,7 @@ pub enum RuleCode {
     Br002,
     Br003,
     Br004,
+    Br005,
 }
 
 impl RuleCode {
@@ -21,6 +22,7 @@ impl RuleCode {
             Self::Br002 => "BR-002",
             Self::Br003 => "BR-003",
             Self::Br004 => "BR-004",
+            Self::Br005 => "BR-005",
         }
     }
 }

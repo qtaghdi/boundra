@@ -19,11 +19,17 @@
 - Allow: `domains/<other>/shared/public` 또는 명시된 public API만 허용
 - Reason: 내부 구현 은닉과 변경 안전성 확보
 
+### BR-005: App-to-Domain Public API Policy
+- Rule: `apps/**`에서 `domains/**`를 import할 때 해당 도메인의 manifest에 선언된 public API만 허용
+- Allow: `domains/<domain>/client/public`, `server/public`, `shared/public` 또는 manifest에 명시된 public API
+- Reason: composition root인 앱이 도메인 내부 구현에 결합되는 것을 방지
+
 ## 2. Allow List
 
 - `client -> shared`
 - `server -> shared`
 - `domain -> other-domain public API`
+- `app -> domain public API`
 
 ## 3. Violation Output Format
 
@@ -61,3 +67,8 @@ suggestion: move contract/type to shared or call via public API.
 - Source: `domains/order/server/checkout.ts`
 - Import: `domains/product/server/internal/stock.ts`
 - Result: BR-004
+
+### Example D
+- Source: `apps/web/src/checkout.ts`
+- Import: `domains/order/server/internal/checkout.ts`
+- Result: BR-005

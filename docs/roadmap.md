@@ -22,7 +22,7 @@ Completed:
 
 - `create-domain`
 - `check-boundaries`
-- BR-001 through BR-004
+- BR-001 through BR-005
 - JSON diagnostics and exit codes
 - config and manifest loading
 - CI integration example
@@ -91,9 +91,12 @@ Goals:
 
 Current priority:
 
+- enforce app-to-domain public API boundaries
+- expose provider-neutral runtime validation issues for adapters and overlays
+- add a one-command project initialization and npm CLI experience
+- build a development-only Vite error overlay on the structured diagnostic protocol
 - validate parser edge cases from real repositories before choosing SWC
 - improve performance measurements on larger workspaces
-- prepare packaging only after the current generated API settles
 
 ## Phase 5: Extension Design
 

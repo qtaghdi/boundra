@@ -53,6 +53,7 @@ pub(crate) fn run(options: &CheckBoundariesOptions) -> i32 {
     let violations = check_boundaries_with_context(
         &imports,
         &BoundaryContext {
+            apps_path: project.config.paths.apps.clone(),
             domains: project.domains,
             path_aliases: project.path_aliases,
         },
