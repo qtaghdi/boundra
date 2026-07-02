@@ -53,6 +53,12 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
       - run: cargo test --workspace
       - run: cargo build --release -p boundra-cli
       - run: ./target/release/boundra --version
+      - run: node packages/runtime/bin/boundra.mjs --version
+        env:
+          BOUNDRA_CLI_PATH: ${{ runner.os == 'Windows' && format('{0}\\target\\release\\boundra.exe', github.workspace) || format('{0}/target/release/boundra', github.workspace) }}

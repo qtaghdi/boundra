@@ -7,6 +7,23 @@ Global information flags:
 - `--help`, `-h`
 - `--version`, `-V`
 
+### 1.0 `init`
+
+Initialize a Boundra workspace without overwriting application files.
+
+Generated targets:
+- `boundra.config.json`
+- configured `apps/` and `domains/` directories
+
+Options:
+- `--root <path>` (default: `.`)
+- `--name <kebab-case>` (default: root directory name)
+
+Behavior:
+- an existing `boundra.config.json` fails with `PROJECT-003`
+- existing directories are preserved
+- generated config is immediately accepted by `check-boundaries`
+
 ### 1.1 `create-domain <name>`
 
 Create a domain scaffold.
