@@ -1,4 +1,4 @@
-import type { BoundraClient } from "@boundra/runtime";
+import type { BoundraClient } from "boundra";
 
 import {
   submitOrderMutation,

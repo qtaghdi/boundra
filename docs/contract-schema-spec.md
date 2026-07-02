@@ -13,7 +13,7 @@ handwritten interface is not generated.
 
 ## 2. Schema Provider
 
-The initial generator emits Zod schemas. `@boundra/runtime` remains provider
+The initial generator emits Zod schemas. `boundra` remains provider
 agnostic by requiring only this structural shape:
 
 ```ts
@@ -28,7 +28,7 @@ contract. Provider-specific features are not part of the Boundra runtime API.
 ## 3. Contract Shape
 
 ```ts
-import { defineQuery, type InferSchema } from "@boundra/runtime";
+import { defineQuery, type InferSchema } from "boundra";
 import { z } from "zod";
 
 export const getOrderInputSchema = z.object({});

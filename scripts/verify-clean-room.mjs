@@ -58,7 +58,7 @@ try {
 
   run("pnpm", [
     "--filter",
-    "@boundra/runtime",
+    "boundra",
     "pack",
     "--pack-destination",
     artifacts,
@@ -86,7 +86,7 @@ try {
     private: true,
     type: "module",
     dependencies: {
-      "@boundra/runtime": fileDependency(tarball),
+      boundra: fileDependency(tarball),
       zod: zodSource,
     },
     devDependencies: {
@@ -106,7 +106,7 @@ try {
   });
   await writeFile(
     join(project, "src", "index.ts"),
-    `import { createBoundraClient } from "@boundra/runtime";
+    `import { createBoundraClient } from "boundra";
 import { getOrderQuery } from "../domains/order/shared/public";
 
 const client = createBoundraClient(async () => ({}));
@@ -152,7 +152,7 @@ void client.query(getOrderQuery, {});
   }
 
   const packedPackage = JSON.parse(
-    await readFile(join(project, "node_modules/@boundra/runtime/package.json"), "utf8"),
+    await readFile(join(project, "node_modules/boundra/package.json"), "utf8"),
   );
   if (packedPackage.exports?.["."]?.import !== "./dist/index.js") {
     throw new Error("clean-room project did not install the compiled runtime export");

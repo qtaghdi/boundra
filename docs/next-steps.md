@@ -21,7 +21,7 @@ Boundra now has a usable MVP foundation:
 - `packages/runtime` provides the first pure TypeScript helper types used by generated contracts.
 - Generated route/query/mutation contracts are automatically registered in `domain.json` `publicApi.shared`.
 - Source and documentation filenames follow `kebab-case`; Rust module identifiers use language-native `snake_case` only behind `#[path = "..."]` where needed.
-- A committed two-domain TypeScript example type-checks generated contracts against `@boundra/runtime`.
+- A committed two-domain TypeScript example type-checks generated contracts against `boundra`.
 - `pnpm verify-example` runs TypeScript, runtime, Rust, boundary, and graph validation locally and in CI.
 
 ## Completed: Replace Ad Hoc JSON Parsing

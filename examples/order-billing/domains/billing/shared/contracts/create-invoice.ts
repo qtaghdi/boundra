@@ -1,4 +1,4 @@
-import { defineRoute, type InferSchema } from "@boundra/runtime";
+import { defineRoute, type InferSchema } from "boundra";
 import { z } from "zod";
 
 export const createInvoiceInputSchema = z.object({

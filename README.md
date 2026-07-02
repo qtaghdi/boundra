@@ -108,7 +108,7 @@ crates/
 - `packages/runtime` provides the first TypeScript helper surface for generated contracts.
 - Generated route/query/mutation contracts are registered in `domain.json` `publicApi.shared`.
 - Generated contracts use runtime schemas and inferred TypeScript types.
-- `@boundra/runtime` validates client transports and server handlers.
+- `boundra` validates client transports and server handlers.
 - `add-dependency` manages domain graph declarations without manual JSON edits.
 - CLI failures include stable codes, context, suggestions, and JSON output where requested.
 - `examples/order-billing` is a committed two-domain generated-contract flow.

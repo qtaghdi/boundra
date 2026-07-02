@@ -96,7 +96,7 @@ Generated files use runtime-backed schema shapes.
 Example direction:
 
 ```ts
-import { defineRoute, type InferSchema } from "@boundra/runtime";
+import { defineRoute, type InferSchema } from "boundra";
 import { z } from "zod";
 
 export const createInvoiceInputSchema = z.object({});

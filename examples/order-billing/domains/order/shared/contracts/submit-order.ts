@@ -1,4 +1,4 @@
-import { defineMutation, type InferSchema } from "@boundra/runtime";
+import { defineMutation, type InferSchema } from "boundra";
 import { z } from "zod";
 
 export const submitOrderInputSchema = z.object({

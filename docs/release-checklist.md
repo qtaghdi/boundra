@@ -7,7 +7,7 @@
 - [x] CLI diagnostics include stable codes and recovery suggestions
 - [x] manifest, diagnostic, contract, and packaging specs are documented
 - [x] generated-code breaking decisions are recorded in ADR 0002
-- [x] packaging direction is recorded in ADR 0003
+- [x] packaging direction is recorded in ADR 0004
 
 ## Artifact Verification
 
@@ -35,11 +35,10 @@
 ## Registry and Release
 
 - [ ] deprecate the accidental repository snapshot published as `boundra@0.1.0`
-- [x] confirm ownership of the `@boundra` npm scope
-- [ ] configure npm trusted publishing or a scoped automation token
-- [ ] publish `@boundra/runtime@0.1.0`
+- [x] configure npm trusted publishing for `boundra`
+- [ ] publish `boundra@0.1.1`
 - [ ] verify the public npm package in a fresh project
-- [ ] create and push the signed `v0.1.0` tag
+- [ ] create and push the signed `v0.1.1` tag
 - [ ] verify GitHub Release checksums and installation instructions
 
 No public release should be announced while any unchecked item in Artifact

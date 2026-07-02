@@ -1,4 +1,4 @@
-import { defineQuery, type InferSchema } from "@boundra/runtime";
+import { defineQuery, type InferSchema } from "boundra";
 import { z } from "zod";
 
 export const getOrderInputSchema = z.object({

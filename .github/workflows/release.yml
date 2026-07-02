@@ -9,7 +9,7 @@ on:
       version:
         description: Version to build without publishing
         required: true
-        default: "0.1.0"
+        default: "0.1.1"
 
 env:
   RELEASE_VERSION: ${{ github.event_name == 'workflow_dispatch' && inputs.version || github.ref_name }}
@@ -83,7 +83,7 @@ jobs:
           path: dist/*
           if-no-files-found: error
 
-  build-runtime:
+  build-package:
     needs: validate
     runs-on: ubuntu-24.04
     steps:
@@ -94,16 +94,16 @@ jobs:
       - run: corepack enable
       - run: pnpm install --frozen-lockfile
       - run: mkdir -p dist
-      - run: pnpm --filter @boundra/runtime pack --pack-destination "$GITHUB_WORKSPACE/dist"
+      - run: pnpm --filter boundra pack --pack-destination "$GITHUB_WORKSPACE/dist"
       - uses: actions/upload-artifact@v4
         with:
-          name: runtime-package
+          name: npm-package
           path: dist/*.tgz
           if-no-files-found: error
 
-  publish-runtime:
+  publish-package:
     if: github.event_name == 'push'
-    needs: [build-cli, build-runtime]
+    needs: [build-cli, build-package]
     runs-on: ubuntu-24.04
     permissions:
       contents: read
@@ -119,11 +119,9 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: npm publish --access public
         working-directory: packages/runtime
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
   publish-release:
-    needs: [build-cli, build-runtime, publish-runtime]
+    needs: [build-cli, build-package, publish-package]
     if: github.event_name == 'push'
     runs-on: ubuntu-24.04
     permissions:

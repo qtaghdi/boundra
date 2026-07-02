@@ -7,7 +7,7 @@ const requested = (process.argv[2] ?? process.env.GITHUB_REF_NAME ?? "")
   .trim();
 
 if (!requested) {
-  throw new Error("release version is required, for example: v0.1.0");
+  throw new Error("release version is required, for example: v0.1.1");
 }
 
 const rootPackage = JSON.parse(

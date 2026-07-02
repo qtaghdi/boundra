@@ -56,7 +56,7 @@ advance.
 
 The committed slice passes all acceptance commands:
 
-- the TypeScript compiler resolves generated contracts and `@boundra/runtime`
+- the TypeScript compiler resolves generated contracts and `boundra`
 - `examples/order-billing` consumes the three manifest-declared shared contracts
 - a billing server workflow imports an order contract through its declared
   public API without a BR-004 violation
@@ -86,7 +86,7 @@ added without manual manifest editing.
 The follow-up framework slice resolved the four observed gaps:
 
 - contracts now use Zod input/result schemas with inferred TypeScript types
-- `@boundra/runtime` validates client transport and server handler boundaries
+- `boundra` validates client transport and server handler boundaries
 - generated query/mutation files are executable framework-neutral client
   adapters
 - generation maintains `shared/public.ts` exports
@@ -108,7 +108,7 @@ Created a temporary sandbox flow to verify Boundra as a framework workflow befor
   - `order/get-order` query
   - `order/submit-order` mutation
 - consumed generated contracts from an app-like `apps/sandbox` location
-- added `@domains/*` and `@boundra/runtime` path aliases in a temporary root `tsconfig.json`
+- added `@domains/*` and `boundra` path aliases in a temporary root `tsconfig.json`
 - set `billing` to depend on `order`
 - ran:
   - `cargo test`
@@ -120,7 +120,7 @@ Created a temporary sandbox flow to verify Boundra as a framework workflow befor
 
 The first dogfooding pass looked healthy:
 
-- generated contracts imported `@boundra/runtime` helper types correctly
+- generated contracts imported `boundra` helper types correctly
 - generated shared contracts were registered in `domain.json` `publicApi.shared`
 - sandbox app code could import generated contracts through `@domains/*`
 - `check-boundaries` passed with no violations

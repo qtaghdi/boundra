@@ -536,6 +536,7 @@ fn generate_route_scaffolds_contract_and_server_route() {
     let contract =
         fs::read_to_string(root.join("domains/billing/shared/contracts/create-invoice.ts"))
             .expect("failed to read generated route contract");
+    assert!(contract.contains("from \"boundra\";"));
     assert!(contract.contains("defineRoute, type InferSchema"));
     assert!(contract.contains("import { z } from \"zod\";"));
     assert!(contract.contains("createInvoiceInputSchema = z.object({})"));
@@ -594,9 +595,11 @@ fn generate_query_and_mutation_scaffold_client_adapters() {
             .expect("failed to read generated mutation contract");
 
     assert!(query_contract.contains("defineQuery, type InferSchema"));
+    assert!(query_contract.contains("from \"boundra\";"));
     assert!(query_contract.contains("listInvoicesInputSchema = z.object({})"));
     assert!(query_contract.contains("export const listInvoicesQuery"));
     assert!(mutation_contract.contains("defineMutation, type InferSchema"));
+    assert!(mutation_contract.contains("from \"boundra\";"));
     assert!(mutation_contract.contains("payInvoiceResultSchema = z.object({})"));
     assert!(mutation_contract.contains("export const payInvoiceMutation"));
 
@@ -606,6 +609,8 @@ fn generate_query_and_mutation_scaffold_client_adapters() {
     let mutation_adapter =
         fs::read_to_string(root.join("domains/billing/client/mutations/pay-invoice.ts"))
             .expect("failed to read generated mutation adapter");
+    assert!(query_adapter.contains("from \"boundra\";"));
+    assert!(mutation_adapter.contains("from \"boundra\";"));
     assert!(query_adapter.contains("client.query(listInvoicesQuery, input)"));
     assert!(mutation_adapter.contains("client.mutation(payInvoiceMutation, input)"));
 

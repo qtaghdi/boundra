@@ -56,7 +56,7 @@ Completed:
 - promoted the framework-neutral TypeScript consumer to `examples/order-billing`
 - created `order` and `billing` domains through the Boundra CLI
 - type-checked generated route/query/mutation contracts against
-  `@boundra/runtime`
+  `boundra`
 - exercised a declared cross-domain public API import
 - added one local and CI verification command with `pnpm verify-example`
 - executed runtime input/result validation, client transport, and a server route
@@ -107,7 +107,7 @@ Goals:
 
 Goals:
 
-- package `@boundra/runtime` as compiled ESM and declarations
+- package `boundra` as compiled ESM and declarations
 - publish native CLI archives with checksums
 - write public quickstart
 - provide examples after dogfooding

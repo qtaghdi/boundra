@@ -21,7 +21,7 @@ importers:
 
   examples/order-billing:
     dependencies:
-      '@boundra/runtime':
+      boundra:
         specifier: workspace:*
         version: link:../../packages/runtime
       zod:
