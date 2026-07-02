@@ -10,14 +10,16 @@
     "example:order-billing": "tsx --tsconfig examples/order-billing/tsconfig.json examples/order-billing/src/index.ts",
     "prepublishOnly": "node scripts/reject-root-publish.mjs",
     "test-runtime": "node --import tsx packages/runtime/tests/runtime-test.ts",
+    "test-vite": "node --import tsx packages/runtime/tests/vite-test.ts",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "verify-clean-room": "node scripts/verify-clean-room.mjs",
     "verify-clean-room-offline": "node scripts/verify-clean-room.mjs --offline",
-    "verify-example": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p examples/order-billing/tsconfig.json && node --import tsx packages/runtime/tests/runtime-test.ts && tsx --tsconfig examples/order-billing/tsconfig.json examples/order-billing/src/index.ts && cargo test --workspace && cargo run -p boundra-cli -- check-boundaries --root examples/order-billing --format json && cargo run -p boundra-cli -- graph-domains --root examples/order-billing --format json"
+    "verify-example": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p examples/order-billing/tsconfig.json && node --import tsx packages/runtime/tests/runtime-test.ts && tsx --tsconfig examples/order-billing/tsconfig.json examples/order-billing/src/index.ts && cargo test --workspace && node --import tsx packages/runtime/tests/vite-test.ts && cargo run -p boundra-cli -- check-boundaries --root examples/order-billing --format json && cargo run -p boundra-cli -- graph-domains --root examples/order-billing --format json"
   },
   "devDependencies": {
     "tsx": "^4.22.4",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "@types/node": "^24.0.0"
   },
   "dependencies": {
     "zod": "^4.4.3"
