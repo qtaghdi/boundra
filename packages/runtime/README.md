@@ -26,6 +26,7 @@ on a structural `parse(unknown)` contract.
 
 - `defineRoute`, `defineQuery`, `defineMutation`
 - `createBoundraClient`
+- `createHttpTransport`
 - `implementRoute`, `implementQuery`, `implementMutation`
 - `executeContract`
 - `BoundraRuntimeError`
