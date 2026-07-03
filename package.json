@@ -5,6 +5,8 @@
   "license": "MIT",
   "packageManager": "pnpm@11.7.0",
   "scripts": {
+    "benchmark:boundaries": "node scripts/benchmark-boundaries.mjs --files 1000 --iterations 3",
+    "benchmark:boundaries:large": "node scripts/benchmark-boundaries.mjs --files 10000 --iterations 3",
     "check-release-notes": "node scripts/check-release-notes.mjs",
     "check-release-version": "node scripts/check-release-version.mjs",
     "example:order-billing": "tsx --tsconfig examples/order-billing/tsconfig.json examples/order-billing/src/index.ts",
