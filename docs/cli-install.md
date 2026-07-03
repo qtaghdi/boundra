@@ -1,5 +1,19 @@
 # Install the Boundra CLI
 
+## npm Package (Recommended)
+
+The `boundra` package includes a cross-platform launcher for the matching native
+CLI. The first invocation downloads the GitHub Release archive, verifies its
+SHA-256 checksum, and caches the binary.
+
+```bash
+pnpm add boundra zod
+pnpm exec boundra --version
+```
+
+Set `BOUNDRA_CLI_PATH` to an existing binary for controlled or offline
+environments.
+
 ## Native Release
 
 Download the archive for your platform from the matching GitHub Release, verify

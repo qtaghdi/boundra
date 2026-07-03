@@ -3,7 +3,6 @@
 ## Prerequisites
 
 - Node.js 20 or newer for TypeScript applications
-- the `boundra` CLI on `PATH`
 - pnpm, npm, or another package manager
 
 ## Install the Runtime
@@ -12,17 +11,23 @@
 pnpm add boundra zod
 ```
 
+The npm package includes the native CLI launcher. Initialize the workspace:
+
+```bash
+pnpm exec boundra init --name my-app
+```
+
 ## Create a Project Flow
 
 ```bash
-boundra create-domain order
-boundra create-domain billing
-boundra add-dependency billing/order
-boundra generate query order/get-order
-boundra generate mutation order/submit-order
-boundra generate route billing/create-invoice
-boundra check-boundaries --format json
-boundra graph-domains --format mermaid
+pnpm exec boundra create-domain order
+pnpm exec boundra create-domain billing
+pnpm exec boundra add-dependency billing/order
+pnpm exec boundra generate query order/get-order
+pnpm exec boundra generate mutation order/submit-order
+pnpm exec boundra generate route billing/create-invoice
+pnpm exec boundra check-boundaries --format json
+pnpm exec boundra graph-domains --format mermaid
 ```
 
 Generated contracts start with safe empty Zod objects. Replace their fields
@@ -32,7 +37,7 @@ adapters. Boundra never overwrites an existing generated file.
 ## CI Gate
 
 ```bash
-boundra check-boundaries --root . --format json
+pnpm exec boundra check-boundaries --root . --format json
 ```
 
 See `docs/contract-schema-spec.md` for contract ownership and
