@@ -20,6 +20,7 @@ pub(crate) enum GenerateKind {
     Route,
     Query,
     Mutation,
+    Resource,
 }
 
 pub(crate) fn run(options: &GenerateOptions) -> i32 {
@@ -285,6 +286,38 @@ fn scaffold_generated_artifact(
             created.push(contract_path);
             created.push(mutation_path);
         }
+        GenerateKind::Resource => {
+            let contract_path = domain_root
+                .join("shared")
+                .join("contracts")
+                .join(format!("{}.ts", options.name));
+            let resource_path = domain_root
+                .join("client")
+                .join("resources")
+                .join(format!("{}.ts", options.name));
+            ensure_new_files([contract_path.as_path(), resource_path.as_path()])?;
+
+            let name = &options.name;
+            let function_name = camel_case(name);
+            let plural_name = resource_plural_name(name);
+            write_new_file(
+                &contract_path,
+                &format!(
+                    "import {{ defineMutation, defineQuery, type InferSchema }} from \"boundra\";\nimport {{ z }} from \"zod\";\n\nexport const {function_name}FieldsSchema = z.object({{}});\nexport const {function_name}Schema = {function_name}FieldsSchema.extend({{ id: z.string().min(1) }});\nexport type {type_name} = InferSchema<typeof {function_name}Schema>;\n\nexport const list{plural_type_name}Query = defineQuery({{\n  name: \"list-{plural_name}\",\n  input: z.object({{}}),\n  result: z.object({{ items: z.array({function_name}Schema) }}),\n}});\nexport const create{type_name}Mutation = defineMutation({{\n  name: \"create-{name}\",\n  input: {function_name}FieldsSchema,\n  result: z.object({{ item: {function_name}Schema }}),\n}});\nexport const update{type_name}Mutation = defineMutation({{\n  name: \"update-{name}\",\n  input: {function_name}FieldsSchema.partial().extend({{ id: z.string().min(1) }}),\n  result: z.object({{ item: {function_name}Schema }}),\n}});\nexport const delete{type_name}Mutation = defineMutation({{\n  name: \"delete-{name}\",\n  input: z.object({{ id: z.string().min(1) }}),\n  result: z.object({{ id: z.string().min(1) }}),\n}});\n",
+                    type_name = type_name,
+                    plural_type_name = pascal_case(&plural_name),
+                ),
+            )?;
+            write_new_file(
+                &resource_path,
+                &format!(
+                    "import type {{ BoundraClient, ContractInput }} from \"boundra\";\n\nimport {{\n  create{type_name}Mutation,\n  delete{type_name}Mutation,\n  list{plural_type_name}Query,\n  update{type_name}Mutation,\n}} from \"../../shared/contracts/{name}\";\n\nexport const list{plural_type_name} = (client: BoundraClient) => client.query(list{plural_type_name}Query, {{}});\nexport const create{type_name} = (client: BoundraClient, input: ContractInput<typeof create{type_name}Mutation>) => client.mutation(create{type_name}Mutation, input);\nexport const update{type_name} = (client: BoundraClient, input: ContractInput<typeof update{type_name}Mutation>) => client.mutation(update{type_name}Mutation, input);\nexport const delete{type_name} = (client: BoundraClient, input: ContractInput<typeof delete{type_name}Mutation>) => client.mutation(delete{type_name}Mutation, input);\n",
+                    plural_type_name = pascal_case(&plural_name),
+                ),
+            )?;
+            created.push(contract_path);
+            created.push(resource_path);
+        }
     }
 
     Ok(created)
@@ -347,5 +380,14 @@ pub(crate) fn generate_kind_name(kind: GenerateKind) -> &'static str {
         GenerateKind::Route => "route",
         GenerateKind::Query => "query",
         GenerateKind::Mutation => "mutation",
+        GenerateKind::Resource => "resource",
+    }
+}
+
+fn resource_plural_name(name: &str) -> String {
+    if name.ends_with('s') {
+        name.to_string()
+    } else {
+        format!("{name}s")
     }
 }

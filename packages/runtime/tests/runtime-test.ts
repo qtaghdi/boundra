@@ -1,6 +1,7 @@
 import {
   BoundraRuntimeError,
   createBoundraClient,
+  createHttpTransport,
   defineQuery,
   defineRoute,
   executeContract,
@@ -37,6 +38,29 @@ const route = defineRoute({ name: "runtime-route", input, result });
 const client = createBoundraClient(async (request) => request.input);
 const response = await client.query(query, { id: "item-001" });
 assert(response.id === "item-001", "client should return a parsed result");
+
+let receivedHttpBody = "";
+const httpClient = createBoundraClient(createHttpTransport({
+  baseUrl: "https://example.test/api/boundra/",
+  fetch: async (_url, init) => {
+    receivedHttpBody = String(init?.body);
+    const request = JSON.parse(receivedHttpBody) as { input: unknown };
+    return new Response(JSON.stringify({ result: request.input }), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
+  },
+}));
+const httpResponse = await httpClient.query(query, { id: "item-http" });
+assert(httpResponse.id === "item-http", "HTTP transport should unwrap result");
+assert(receivedHttpBody.includes('"kind":"query"'), "HTTP transport should send contract kind");
+
+await expectRuntimeError("RUNTIME-003", () =>
+  createBoundraClient(createHttpTransport({
+    baseUrl: "https://example.test",
+    fetch: async () => new Response("failed", { status: 503 }),
+  })).query(query, { id: "item-http" }),
+);
 
 const inputError = await expectRuntimeError("RUNTIME-001", () =>
   client.query(query, { id: "" }),

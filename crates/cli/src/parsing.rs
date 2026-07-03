@@ -335,6 +335,7 @@ fn parse_generate_kind(value: &str) -> Result<GenerateKind, String> {
         "route" => Ok(GenerateKind::Route),
         "query" => Ok(GenerateKind::Query),
         "mutation" => Ok(GenerateKind::Mutation),
+        "resource" => Ok(GenerateKind::Resource),
         _ => Err(format!("invalid generate kind: {value}")),
     }
 }

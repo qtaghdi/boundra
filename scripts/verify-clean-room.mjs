@@ -131,6 +131,7 @@ void client.query(getOrderQuery, {});
   cli("generate", "route", "billing/create-invoice");
   cli("generate", "query", "order/get-order");
   cli("generate", "mutation", "order/submit-order");
+  cli("generate", "resource", "order/task");
 
   run("pnpm", ["exec", "tsc", "--noEmit"], { cwd: project });
 

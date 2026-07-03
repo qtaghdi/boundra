@@ -57,5 +57,5 @@ fn print_help() {
     println!(
         "  boundra graph-domains [--root <path>] [--format mermaid|dot|json] [--output <path>]"
     );
-    println!("  boundra generate route|query|mutation <domain>/<name> [--root <path>]");
+    println!("  boundra generate route|query|mutation|resource <domain>/<name> [--root <path>]");
 }

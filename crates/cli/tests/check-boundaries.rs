@@ -565,6 +565,31 @@ fn check_boundaries_allows_app_to_declared_domain_public_api() {
 }
 
 #[test]
+fn generate_resource_scaffolds_crud_contracts_and_client_api() {
+    let root = create_fixture("generate-resource");
+    write_domain_manifest(&root, "order", "order", &[]);
+
+    let output = run_boundra(&root, &["generate", "resource", "order/task"]);
+    let stdout = String::from_utf8_lossy(&output.stdout);
+
+    assert_eq!(output.status.code(), Some(0));
+    assert!(stdout.contains("generate resource: OK (order/task)"));
+    let contract = fs::read_to_string(root.join("domains/order/shared/contracts/task.ts"))
+        .expect("resource contract should exist");
+    let client = fs::read_to_string(root.join("domains/order/client/resources/task.ts"))
+        .expect("resource client should exist");
+    assert!(contract.contains("listTasksQuery"));
+    assert!(contract.contains("createTaskMutation"));
+    assert!(contract.contains("updateTaskMutation"));
+    assert!(contract.contains("deleteTaskMutation"));
+    assert!(client.contains("export const listTasks"));
+
+    let manifest =
+        fs::read_to_string(root.join("domains/order/domain.json")).expect("manifest should exist");
+    assert!(manifest.contains("./shared/contracts/task.ts"));
+}
+
+#[test]
 fn graph_domains_outputs_json_dependency_graph() {
     let root = create_temp_dir("graph-json");
     write_domain_manifest(&root, "billing", "billing", &[]);

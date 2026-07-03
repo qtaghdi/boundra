@@ -97,6 +97,18 @@ Side effects:
 - preserve existing dependencies
 - do not add duplicates
 
+### 1.8 `generate resource <domain>/<name>`
+
+Generate a contract-only CRUD resource scaffold.
+
+Generated targets:
+- `domains/<domain>/shared/contracts/<name>.ts`
+- `domains/<domain>/client/resources/<name>.ts`
+
+The shared file owns list/create/update/delete schemas and contracts. The
+client file exposes typed functions. Boundra does not generate persistence,
+HTTP routes, UI, or ORM code.
+
 ## 2. CLI UX Principles
 
 - Boundary diagnostics include rule code, file, line, import, message, and suggestion.

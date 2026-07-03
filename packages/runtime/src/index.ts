@@ -11,6 +11,10 @@ export {
   type BoundraValidationIssue,
 } from "./errors.js";
 export {
+  createHttpTransport,
+  type BoundraHttpTransportOptions,
+} from "./http.js";
+export {
   executeContract,
   implementMutation,
   implementQuery,
