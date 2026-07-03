@@ -62,3 +62,14 @@ jobs:
       - run: node packages/runtime/bin/boundra.mjs --version
         env:
           BOUNDRA_CLI_PATH: ${{ runner.os == 'Windows' && format('{0}\\target\\release\\boundra.exe', github.workspace) || format('{0}/target/release/boundra', github.workspace) }}
+
+  benchmark-smoke:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+      - run: cargo build --release -p boundra-cli
+      - run: node scripts/benchmark-boundaries.mjs --files 1000 --iterations 2 --max-ms 5000 --max-rss-mb 512

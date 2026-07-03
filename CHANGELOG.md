@@ -13,6 +13,7 @@ The format follows Keep a Changelog and versions follow Semantic Versioning.
 - a development-only Vite overlay for runtime and boundary diagnostics
 - `boundra init` and a checksummed native CLI launcher in the npm package
 - a framework-neutral HTTP transport and CRUD resource contract generator
+- reproducible 1k/10k-file boundary benchmarks with a CI regression smoke gate
 
 ## [0.1.1] - 2026-07-02
 
