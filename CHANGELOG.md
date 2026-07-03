@@ -6,6 +6,8 @@ The format follows Keep a Changelog and versions follow Semantic Versioning.
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-07-03
+
 ### Added
 
 - BR-005 enforcement for app imports that bypass a domain's declared public API

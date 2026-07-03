@@ -2,7 +2,7 @@
 
 ## Code and Contracts
 
-- [x] BR-001 through BR-004 are implemented and tested
+- [x] BR-001 through BR-005 are implemented and tested
 - [x] schema-backed generated contracts are runtime validated
 - [x] CLI diagnostics include stable codes and recovery suggestions
 - [x] manifest, diagnostic, contract, and packaging specs are documented
@@ -26,7 +26,7 @@
 - [x] MIT `LICENSE`
 - [x] `SECURITY.md`
 - [x] `CHANGELOG.md`
-- [x] versioned `v0.1.0` and `v0.1.1` release notes
+- [x] versioned `v0.1.0`, `v0.1.1`, and `v0.1.2` release notes
 - [x] PR and tag workflows validate the release-note format
 - [x] public quickstart and CLI install guide
 - [x] Node and native target support matrix
@@ -38,10 +38,12 @@
 
 - [ ] deprecate the accidental repository snapshot published as `boundra@0.1.0`
 - [x] configure npm trusted publishing for `boundra`
-- [ ] publish `boundra@0.1.1`
-- [ ] verify the public npm package in a fresh project
-- [ ] create and push the signed `v0.1.1` tag
-- [ ] verify GitHub Release checksums and installation instructions
+- [x] publish `boundra@0.1.1`
+- [x] verify the public npm package in a fresh project
+- [x] create and push the `v0.1.1` tag
+- [x] verify GitHub Release checksums and installation instructions
+- [ ] publish and verify `boundra@0.1.2`
+- [ ] create and push the `v0.1.2` tag
 
 No public release should be announced while any unchecked item in Artifact
 Verification, Repository Readiness, or Registry and Release remains.

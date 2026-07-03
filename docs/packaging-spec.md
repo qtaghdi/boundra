@@ -11,6 +11,7 @@ Public npm package containing:
 
 - ESM JavaScript under `dist/`
 - TypeScript declarations under `dist/`
+- cross-platform native CLI launcher under `bin/`
 - package metadata and README
 - no TypeScript source dependency at runtime
 
@@ -46,7 +47,8 @@ does not incorrectly raise the runtime's minimum Node.js version.
 
 - `type: module`
 - conditional `exports` with `types` and `import`
-- `files: ["dist", "README.md", "LICENSE"]`
+- `files: ["bin", "dist", "README.md", "LICENSE"]`
+- `bin.boundra: "./bin/boundra.mjs"`
 - `sideEffects: false`
 - `engines.node >= 20`
 - public access metadata
@@ -67,15 +69,19 @@ The release binary must:
 - emit the same diagnostic and JSON schemas tested in the workspace
 - report its version through `boundra --version`
 
+The npm launcher must download only the matching release version, verify the
+archive against `checksums-sha256.txt`, cache it outside the project, and avoid
+network access during package installation.
+
 ## 5. Clean-Room Gate
 
 A temporary project outside the repository must:
 
 1. install the packed runtime artifact, Zod, and TypeScript
-2. execute the release-mode Boundra CLI binary
-3. create `order` and `billing`
+2. execute the installed npm CLI launcher against the release-mode binary
+3. initialize a workspace and create `order` and `billing`
 4. add `billing -> order`
-5. generate one route, query, and mutation
+5. generate one route, query, mutation, and CRUD resource
 6. type-check generated code against the packed runtime
 7. pass `check-boundaries --format json`
 8. produce the expected domain graph
