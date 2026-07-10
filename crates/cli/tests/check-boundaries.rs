@@ -3,6 +3,7 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
 use std::time::{SystemTime, UNIX_EPOCH};
 
+use boundra_core::DEFAULT_BOUNDARY_IGNORE_PATTERNS;
 use serde_json::Value;
 
 fn run_boundra(root: &Path, args: &[&str]) -> Output {
@@ -38,6 +39,15 @@ fn parse_json_stdout(output: &Output) -> Value {
     serde_json::from_slice(&output.stdout).expect("stdout should be valid JSON")
 }
 
+fn default_ignore_patterns_json() -> Value {
+    Value::Array(
+        DEFAULT_BOUNDARY_IGNORE_PATTERNS
+            .iter()
+            .map(|pattern| Value::String((*pattern).to_string()))
+            .collect(),
+    )
+}
+
 #[test]
 fn help_lists_the_complete_v1_command_surface() {
     let root = create_temp_dir("help-output");
@@ -71,6 +81,15 @@ fn init_creates_a_valid_non_destructive_workspace() {
     assert!(root.join("apps").is_dir());
     assert!(root.join("domains").is_dir());
 
+    let config: Value = serde_json::from_slice(
+        &fs::read(root.join("boundra.config.json")).expect("failed to read generated config"),
+    )
+    .expect("generated config should be valid JSON");
+    assert_eq!(
+        config["checkBoundaries"]["ignore"],
+        default_ignore_patterns_json()
+    );
+
     let check = run_boundra(
         &root,
         &["check-boundaries", "--root", &root_arg, "--format", "json"],
@@ -81,6 +100,20 @@ fn init_creates_a_valid_non_destructive_workspace() {
     let stderr = String::from_utf8_lossy(&repeated.stderr);
     assert_eq!(repeated.status.code(), Some(2));
     assert!(stderr.contains("[ERROR] PROJECT-003"));
+}
+
+#[test]
+fn committed_example_uses_default_boundary_ignore_patterns() {
+    let example_config = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../examples/order-billing/boundra.config.json");
+    let config: Value =
+        serde_json::from_slice(&fs::read(example_config).expect("failed to read example config"))
+            .expect("example config should be valid JSON");
+
+    assert_eq!(
+        config["checkBoundaries"]["ignore"],
+        default_ignore_patterns_json()
+    );
 }
 
 #[test]

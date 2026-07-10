@@ -6,6 +6,17 @@ use std::path::{Path, PathBuf};
 
 use serde::Deserialize;
 
+pub const DEFAULT_BOUNDARY_IGNORE_PATTERNS: &[&str] = &[
+    "**/node_modules/**",
+    "**/.next/**",
+    "**/.turbo/**",
+    "**/.claude/worktrees/**",
+    "**/dist/**",
+    "**/build/**",
+    "**/coverage/**",
+    "**/target/**",
+];
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RuleCode {
     Br001,
@@ -147,16 +158,10 @@ impl Default for BoundraConfig {
                     "js".to_string(),
                     "jsx".to_string(),
                 ],
-                ignore: vec![
-                    "**/node_modules/**".to_string(),
-                    "**/.next/**".to_string(),
-                    "**/.turbo/**".to_string(),
-                    "**/.claude/worktrees/**".to_string(),
-                    "**/dist/**".to_string(),
-                    "**/build/**".to_string(),
-                    "**/coverage/**".to_string(),
-                    "**/target/**".to_string(),
-                ],
+                ignore: DEFAULT_BOUNDARY_IGNORE_PATTERNS
+                    .iter()
+                    .map(|pattern| (*pattern).to_string())
+                    .collect(),
             },
         }
     }

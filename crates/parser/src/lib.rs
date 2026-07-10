@@ -2,6 +2,8 @@ use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
 
+use boundra_core::DEFAULT_BOUNDARY_IGNORE_PATTERNS;
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ImportRecord {
     pub source_file: String,
@@ -25,16 +27,10 @@ impl Default for ScanOptions {
                 "js".to_string(),
                 "jsx".to_string(),
             ],
-            ignore: vec![
-                "**/node_modules/**".to_string(),
-                "**/.next/**".to_string(),
-                "**/.turbo/**".to_string(),
-                "**/.claude/worktrees/**".to_string(),
-                "**/dist/**".to_string(),
-                "**/build/**".to_string(),
-                "**/coverage/**".to_string(),
-                "**/target/**".to_string(),
-            ],
+            ignore: DEFAULT_BOUNDARY_IGNORE_PATTERNS
+                .iter()
+                .map(|pattern| (*pattern).to_string())
+                .collect(),
         }
     }
 }
