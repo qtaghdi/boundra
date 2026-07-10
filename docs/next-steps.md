@@ -13,7 +13,11 @@ Boundra now has a usable MVP foundation:
 - Config and manifest JSON parsing uses `serde` and `serde_json`.
 - `check-boundaries --format json` is serialized from typed output structs.
 - Import scanning supports multiline static imports/exports and dynamic `import(...)`.
+- Interpolated dynamic import templates are excluded because they do not resolve
+  to one static boundary target.
 - `tsconfig.json` path aliases are resolved during boundary checks.
+- `tsconfig.json` is parsed as JSONC, including comments and trailing commas.
+- Default scans ignore Next, Turbo, and agent worktree output.
 - `graph-domains` outputs domain dependency graphs as Mermaid, DOT, or JSON.
 - `generate route|query|mutation <domain>/<name>` scaffolds contract-centered stubs.
 - CLI command handlers are split into focused modules for parsing, output, utilities, and command execution.
@@ -186,6 +190,21 @@ Completed:
 
 ## Next Priority
 
-- Run Boundra against a larger real repository and collect parser/performance evidence.
-- Decide whether parser evidence justifies an SWC backend.
 - Harden packaging and public quickstart after the generated API settles.
+- Keep collecting parser evidence from different repository shapes; retain the
+  lightweight backend until false negatives or AST-dependent rules justify SWC.
+
+## Completed: Validate a Larger Real Repository
+
+Completed:
+
+- Compared a 773-file Next.js monorepo against TypeScript import preprocessing.
+- Matched all 2,559 unique source-file/module-path pairs after fixing four
+  interpolated dynamic import false positives.
+- Added JSONC support for normal commented `tsconfig.json` files.
+- Excluded `.next`, `.turbo`, and `.claude/worktrees` from default scans.
+- Measured the release CLI on the real repository and 1,000/10,000-file
+  synthetic fixtures.
+- Decided not to add an SWC backend without stronger parser evidence.
+
+Detailed evidence is recorded in `docs/dogfooding-notes.md`.

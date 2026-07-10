@@ -428,6 +428,35 @@ fn check_boundaries_applies_config_ignore_paths() {
 }
 
 #[test]
+fn check_boundaries_ignores_framework_build_directories_by_default() {
+    let root = create_fixture("default-framework-ignore");
+    write_domain_manifest(&root, "order", "order", &[]);
+    fs::create_dir_all(root.join("apps/web/.next")).expect("failed to create .next fixture");
+    fs::create_dir_all(root.join("apps/web/.turbo")).expect("failed to create .turbo fixture");
+    fs::create_dir_all(root.join("domains/order/server/internal"))
+        .expect("failed to create internal fixture");
+
+    for generated_dir in [".next", ".turbo"] {
+        fs::write(
+            root.join(format!("apps/web/{generated_dir}/generated.ts")),
+            "import 'domains/order/server/internal/checkout';\n",
+        )
+        .expect("failed to write generated fixture");
+    }
+    fs::write(
+        root.join("domains/order/server/internal/checkout.ts"),
+        "export const checkout = true;\n",
+    )
+    .expect("failed to write internal fixture");
+
+    let output = run_boundra(&root, &["check-boundaries", "--format", "json"]);
+    let json = parse_json_stdout(&output);
+
+    assert_eq!(output.status.code(), Some(0));
+    assert_eq!(json["status"], "passed");
+}
+
+#[test]
 fn check_boundaries_accepts_equals_json_format() {
     let root = create_fixture("equals-json-output");
     fs::write(
@@ -470,10 +499,11 @@ fn check_boundaries_resolves_tsconfig_path_aliases() {
         root.join("tsconfig.json"),
         r#"{
   "compilerOptions": {
+    // TypeScript accepts JSONC in tsconfig files.
     "paths": {
-      "@domains/*": ["domains/*"]
-    }
-  }
+      "@domains/*": ["domains/*"],
+    },
+  },
 }
 "#,
     )
@@ -494,6 +524,26 @@ fn check_boundaries_resolves_tsconfig_path_aliases() {
 
     assert_eq!(output.status.code(), Some(1));
     assert_eq!(json["violations"][0]["rule"], "BR-001");
+}
+
+#[test]
+fn check_boundaries_rejects_non_jsonc_tsconfig_syntax() {
+    let root = create_fixture("invalid-tsconfig-jsonc");
+    fs::write(
+        root.join("tsconfig.json"),
+        "{'compilerOptions': {'paths': {}}}\n",
+    )
+    .expect("failed to write invalid tsconfig");
+
+    let output = run_boundra(&root, &["check-boundaries", "--format", "json"]);
+    let json = parse_json_stdout(&output);
+
+    assert_eq!(output.status.code(), Some(2));
+    assert_eq!(json["errors"][0]["code"], "PROJECT-001");
+    assert!(json["errors"][0]["message"]
+        .as_str()
+        .expect("error message should be a string")
+        .contains("invalid JSONC"));
 }
 
 #[test]

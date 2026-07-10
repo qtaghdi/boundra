@@ -27,6 +27,9 @@ impl Default for ScanOptions {
             ],
             ignore: vec![
                 "**/node_modules/**".to_string(),
+                "**/.next/**".to_string(),
+                "**/.turbo/**".to_string(),
+                "**/.claude/worktrees/**".to_string(),
                 "**/dist/**".to_string(),
                 "**/build/**".to_string(),
                 "**/coverage/**".to_string(),
@@ -209,7 +212,11 @@ fn extract_dynamic_import_path(line: &str) -> Option<String> {
 fn extract_path_after_call(line: &str, needle: &str) -> Option<String> {
     let index = find_code_needle(line, needle)?;
     let rest = &line[index + needle.len()..];
-    extract_first_quoted(rest)
+    let (quote, path) = extract_first_quoted_with_delimiter(rest)?;
+    if quote == '`' && path.contains("${") {
+        return None;
+    }
+    Some(path)
 }
 
 fn contains_code_call(line: &str, needle: &str) -> bool {
@@ -378,6 +385,7 @@ fn matches_ignore_pattern(path: &str, pattern: &str) -> bool {
             .trim_end_matches("/**");
         return path == segment
             || path.starts_with(&format!("{segment}/"))
+            || path.ends_with(&format!("/{segment}"))
             || path.contains(&format!("/{segment}/"));
     }
 
@@ -394,16 +402,20 @@ fn extract_path_after_keyword(line: &str, needle: &str) -> Option<String> {
 }
 
 fn extract_first_quoted(input: &str) -> Option<String> {
+    extract_first_quoted_with_delimiter(input).map(|(_, value)| value)
+}
+
+fn extract_first_quoted_with_delimiter(input: &str) -> Option<(char, String)> {
     let start = input.find(['\'', '"', '`'])?;
     let quote = input.as_bytes()[start] as char;
     let after = &input[start + 1..];
     let end = after.find(quote)?;
-    Some(after[..end].to_string())
+    Some((quote, after[..end].to_string()))
 }
 
 #[cfg(test)]
 mod tests {
-    use super::extract_imports_from_content;
+    use super::{extract_imports_from_content, should_ignore, ScanOptions};
 
     fn import_paths(content: &str) -> Vec<String> {
         extract_imports_from_content(content)
@@ -505,5 +517,24 @@ import { visible } from '../shared/visible';
     fn extracts_static_template_literal_dynamic_import() {
         let content = "const selected = import(`../shared/visible`);";
         assert_eq!(import_paths(content), vec!["../shared/visible"]);
+    }
+
+    #[test]
+    fn ignores_interpolated_template_literal_dynamic_import() {
+        let content = "const selected = import(`../shared/${moduleName}`);";
+        assert!(import_paths(content).is_empty());
+    }
+
+    #[test]
+    fn default_scan_ignores_generated_and_agent_worktree_directories() {
+        let ignore = ScanOptions::default().ignore;
+
+        for path in [
+            "apps/web/.next",
+            "apps/web/.turbo",
+            ".claude/worktrees/task",
+        ] {
+            assert!(should_ignore(path, &ignore), "should ignore {path}");
+        }
     }
 }

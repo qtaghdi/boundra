@@ -149,6 +149,9 @@ impl Default for BoundraConfig {
                 ],
                 ignore: vec![
                     "**/node_modules/**".to_string(),
+                    "**/.next/**".to_string(),
+                    "**/.turbo/**".to_string(),
+                    "**/.claude/worktrees/**".to_string(),
                     "**/dist/**".to_string(),
                     "**/build/**".to_string(),
                     "**/coverage/**".to_string(),
@@ -345,7 +348,23 @@ fn load_tsconfig_path_aliases(root: &Path) -> io::Result<Vec<PathAlias>> {
     // TypeScript의 compilerOptions.paths를 Boundra 내부 경로로 해석하기 위한 준비 단계다.
     // 예: "@domains/*": ["domains/*"] -> prefix "@domains/", target_prefix "domains/"
     let content = fs::read_to_string(&tsconfig_path)?;
-    let raw = parse_json_file::<RawTsConfig>(&tsconfig_path, &content)?;
+    let parse_options = jsonc_parser::ParseOptions {
+        allow_comments: true,
+        allow_loose_object_property_names: false,
+        allow_trailing_commas: true,
+        allow_missing_commas: false,
+        allow_single_quoted_strings: false,
+        allow_hexadecimal_numbers: false,
+        allow_unary_plus_numbers: false,
+    };
+    let raw = jsonc_parser::parse_to_serde_value::<RawTsConfig>(&content, &parse_options).map_err(
+        |err| {
+            io::Error::new(
+                io::ErrorKind::InvalidData,
+                format!("invalid JSONC in {}: {err}", display_path(&tsconfig_path)),
+            )
+        },
+    )?;
     let Some(compiler_options) = raw.compiler_options else {
         return Ok(Vec::new());
     };

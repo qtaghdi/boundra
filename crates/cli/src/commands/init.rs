@@ -97,6 +97,9 @@ fn config_json(name: &str) -> String {
     "includeExtensions": ["ts", "tsx", "js", "jsx"],
     "ignore": [
       "**/node_modules/**",
+      "**/.next/**",
+      "**/.turbo/**",
+      "**/.claude/worktrees/**",
       "**/dist/**",
       "**/build/**",
       "**/coverage/**",

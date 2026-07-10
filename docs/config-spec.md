@@ -89,6 +89,9 @@ These defaults are used by `create-domain`.
     "includeExtensions": ["ts", "tsx", "js", "jsx"],
     "ignore": [
       "**/node_modules/**",
+      "**/.next/**",
+      "**/.turbo/**",
+      "**/.claude/worktrees/**",
       "**/dist/**",
       "**/build/**",
       "**/coverage/**",
@@ -130,6 +133,9 @@ When no config file is present, Boundra behaves as if the following config exist
     "includeExtensions": ["ts", "tsx", "js", "jsx"],
     "ignore": [
       "**/node_modules/**",
+      "**/.next/**",
+      "**/.turbo/**",
+      "**/.claude/worktrees/**",
       "**/dist/**",
       "**/build/**",
       "**/coverage/**",
@@ -148,7 +154,17 @@ When no config file is present, Boundra behaves as if the following config exist
 - public API paths must not expose `internal`
 - `checkBoundaries.includeExtensions` must not be empty
 
-## 6. Not Yet Supported
+## 6. TypeScript Path Aliases
+
+When a root `tsconfig.json` exists, Boundra reads
+`compilerOptions.paths` for boundary resolution. The file is parsed as JSONC,
+including comments and trailing commas, to match normal TypeScript configuration
+syntax.
+
+Only `compilerOptions.paths` affects the Boundra project model. Other TypeScript
+compiler options remain owned by the TypeScript toolchain.
+
+## 7. Not Yet Supported
 
 The following fields are planned or possible later, but are not implemented in the current CLI:
 

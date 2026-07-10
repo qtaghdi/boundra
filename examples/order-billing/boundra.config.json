@@ -81,6 +81,9 @@
     ],
     "ignore": [
       "**/node_modules/**",
+      "**/.next/**",
+      "**/.turbo/**",
+      "**/.claude/worktrees/**",
       "**/dist/**",
       "**/build/**",
       "**/coverage/**",
