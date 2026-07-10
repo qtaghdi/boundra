@@ -95,8 +95,16 @@ Current priority:
 - expose provider-neutral runtime validation issues for adapters and overlays
 - add a one-command project initialization and npm CLI experience
 - build a development-only Vite error overlay on the structured diagnostic protocol
-- validate parser edge cases from real repositories before choosing SWC
-- improve performance measurements on larger workspaces
+- continue collecting parser edge cases before reconsidering SWC
+- harden packaging and the public quickstart
+
+Validated during stabilization:
+
+- a 773-file real Next.js monorepo matched TypeScript on all 2,559 unique
+  source-file/module-path pairs after narrow parser fixes
+- JSONC `tsconfig.json`, generated framework output, and agent worktrees are
+  handled by the default project model
+- a 10,000-file boundary fixture remains below 250 ms warm median and 6 MB RSS
 
 ## Phase 5: Extension Design
 

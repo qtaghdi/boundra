@@ -1,5 +1,55 @@
 # Dogfooding Notes
 
+## 2026-07-10: Real Repository Parser and Performance Audit
+
+### Scope
+
+Boundra was run against a clean Git snapshot of a local four-app Next.js
+monorepo containing 773 tracked TypeScript and JavaScript files. Import
+extraction was compared by file and module path with the repository's
+TypeScript 6 `preProcessFile` output.
+
+The same release CLI was also measured against the real snapshot and the
+existing synthetic 1,000-file and 10,000-file fixtures.
+
+### Findings
+
+- TypeScript reported 2,605 raw entries, including four duplicate module
+  augmentation references. Boundra reported 2,601 raw imports after fixes.
+- After de-duplicating by source file and module path, both scanners produced
+  the same 2,559 entries: zero missing imports and zero extra imports.
+- Four dynamic imports with interpolated template paths were initially treated
+  as static paths. Boundra now ignores interpolated templates while retaining
+  static template literal imports.
+- A normal commented `tsconfig.json` initially failed strict JSON parsing.
+  Boundra now parses TypeScript configuration as JSONC, including comments and
+  trailing commas.
+- The populated working tree initially produced 11,993 imports because Next,
+  Turbo, and agent worktree output was scanned. Default ignores for `.next`,
+  `.turbo`, and `.claude/worktrees` reduced that to 2,605; the four entries
+  beyond the clean snapshot came from generated `next-env.d.ts` files.
+
+### Performance
+
+Measured on macOS arm64 with Node.js 24.14.0 and the release CLI:
+
+- real 773-file snapshot: 30-40 ms, maximum RSS 3.98 MB
+- synthetic 1,000 files: 22.49 ms cold, 19.62 ms warm median, 2.59 MB maximum RSS
+- synthetic 10,000 files: 178.12 ms cold, 244.19 ms warm median, 5.97 MB maximum RSS
+
+All runs completed with zero boundary violations in their valid fixtures.
+
+### Decision
+
+Keep the lightweight parser for the current stabilization phase. The real
+repository exposed narrow compatibility issues that were fixed without an AST
+backend, while normalized import coverage matched TypeScript exactly and the
+10,000-file fixture remained below 250 ms warm median.
+
+Reconsider SWC or another full parser only when a broader real-repository corpus
+shows syntax-related false negatives, or when new analysis requires AST
+semantics that the import scanner cannot represent safely.
+
 ## 2026-07-01: Promote the Dogfood Slice to a Public Example
 
 The completed dogfood slice now has stable contracts, runtime behavior, and CI

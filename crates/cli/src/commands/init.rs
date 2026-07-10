@@ -1,6 +1,8 @@
 use std::fs;
 use std::path::PathBuf;
 
+use boundra_core::DEFAULT_BOUNDARY_IGNORE_PATTERNS;
+
 use crate::output::{print_error, CliDiagnostic};
 use crate::util::{display_path, is_kebab_case};
 
@@ -71,6 +73,12 @@ pub(crate) fn run(options: &InitOptions) -> i32 {
 }
 
 fn config_json(name: &str) -> String {
+    let ignore_patterns = DEFAULT_BOUNDARY_IGNORE_PATTERNS
+        .iter()
+        .map(|pattern| format!(r#"      "{pattern}""#))
+        .collect::<Vec<_>>()
+        .join(",\n");
+
     format!(
         r#"{{
   "$schema": "https://boundra.dev/schemas/boundra-config.v1.json",
@@ -96,11 +104,7 @@ fn config_json(name: &str) -> String {
   "checkBoundaries": {{
     "includeExtensions": ["ts", "tsx", "js", "jsx"],
     "ignore": [
-      "**/node_modules/**",
-      "**/dist/**",
-      "**/build/**",
-      "**/coverage/**",
-      "**/target/**"
+{ignore_patterns}
     ]
   }}
 }}
