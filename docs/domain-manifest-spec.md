@@ -17,6 +17,7 @@ It is used by:
 - `generate route|query|mutation`
 - `add-dependency`
 - BR-004 public API validation
+- BR-006 declared dependency validation
 
 ## 3. Schema Shape
 
@@ -57,6 +58,7 @@ Other fields may be present and are preserved when possible, but they are not en
 
 - `name` must match the domain folder name.
 - `dependsOn` entries must reference existing domains.
+- `dependsOn` must form an acyclic graph.
 - public API paths must be relative.
 - public API paths must point to existing files.
 - public API paths must not expose `internal` paths.
@@ -87,7 +89,8 @@ Generation also appends an idempotent export to `shared/public.ts`.
 
 `add-dependency <domain>/<dependency>` appends the dependency to `dependsOn`.
 Both domains must exist, self-dependencies are rejected, and repeated calls do
-not add duplicates.
+not add duplicates. An edge that would create a dependency cycle is rejected
+without changing the manifest.
 
 ## 8. Versioning
 

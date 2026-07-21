@@ -47,7 +47,7 @@ if (import.meta.hot) {
       publish();
     },
     handleHotUpdate(context: { file: string }) {
-      if (/\.[cm]?[jt]sx?$/.test(context.file)) publish();
+      if (/\.(?:[cm]?[jt]sx?|svelte)$/.test(context.file)) publish();
     },
   };
 }

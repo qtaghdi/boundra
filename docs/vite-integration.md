@@ -14,6 +14,7 @@ During development the plugin:
 
 - renders unhandled `BoundraRuntimeError` details in a browser overlay
 - runs boundary checks at startup and after source updates
+- reacts to TypeScript, JavaScript, and Svelte source updates
 - clears resolved diagnostics automatically
 
 The overlay is not injected during production builds. Use `cliPath` only in

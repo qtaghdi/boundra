@@ -24,6 +24,7 @@ pub enum RuleCode {
     Br003,
     Br004,
     Br005,
+    Br006,
 }
 
 impl RuleCode {
@@ -34,6 +35,7 @@ impl RuleCode {
             Self::Br003 => "BR-003",
             Self::Br004 => "BR-004",
             Self::Br005 => "BR-005",
+            Self::Br006 => "BR-006",
         }
     }
 }
@@ -157,6 +159,7 @@ impl Default for BoundraConfig {
                     "tsx".to_string(),
                     "js".to_string(),
                     "jsx".to_string(),
+                    "svelte".to_string(),
                 ],
                 ignore: DEFAULT_BOUNDARY_IGNORE_PATTERNS
                     .iter()
@@ -341,18 +344,150 @@ fn validate_domain_dependencies(domains: &BTreeMap<String, DomainManifest>) -> i
         }
     }
 
+    if let Some(cycle) = find_domain_dependency_cycle(domains) {
+        return invalid_data(format!(
+            "domain dependency cycle detected: {}",
+            cycle.join(" -> ")
+        ));
+    }
+
     Ok(())
 }
 
+pub fn find_domain_dependency_cycle(
+    domains: &BTreeMap<String, DomainManifest>,
+) -> Option<Vec<String>> {
+    #[derive(Clone, Copy, PartialEq, Eq)]
+    enum VisitState {
+        Visiting,
+        Visited,
+    }
+
+    fn visit(
+        domain: &str,
+        domains: &BTreeMap<String, DomainManifest>,
+        states: &mut BTreeMap<String, VisitState>,
+        stack: &mut Vec<String>,
+    ) -> Option<Vec<String>> {
+        if states.get(domain) == Some(&VisitState::Visited) {
+            return None;
+        }
+        if states.get(domain) == Some(&VisitState::Visiting) {
+            let start = stack.iter().position(|entry| entry == domain).unwrap_or(0);
+            let mut cycle = stack[start..].to_vec();
+            cycle.push(domain.to_string());
+            return Some(cycle);
+        }
+
+        states.insert(domain.to_string(), VisitState::Visiting);
+        stack.push(domain.to_string());
+
+        if let Some(manifest) = domains.get(domain) {
+            for dependency in &manifest.depends_on {
+                if let Some(cycle) = visit(dependency, domains, states, stack) {
+                    return Some(cycle);
+                }
+            }
+        }
+
+        stack.pop();
+        states.insert(domain.to_string(), VisitState::Visited);
+        None
+    }
+
+    let mut states = BTreeMap::new();
+    let mut stack = Vec::new();
+    for domain in domains.keys() {
+        if let Some(cycle) = visit(domain, domains, &mut states, &mut stack) {
+            return Some(cycle);
+        }
+    }
+
+    None
+}
+
 fn load_tsconfig_path_aliases(root: &Path) -> io::Result<Vec<PathAlias>> {
-    let tsconfig_path = root.join("tsconfig.json");
+    let workspace_root = absolute_normalized_path(root)?;
+    let tsconfig_path = workspace_root.join("tsconfig.json");
     if !tsconfig_path.exists() {
         return Ok(Vec::new());
     }
 
-    // TypeScript의 compilerOptions.paths를 Boundra 내부 경로로 해석하기 위한 준비 단계다.
-    // 예: "@domains/*": ["domains/*"] -> prefix "@domains/", target_prefix "domains/"
-    let content = fs::read_to_string(&tsconfig_path)?;
+    let mut aliases = BTreeMap::new();
+    let mut visiting = Vec::new();
+    load_tsconfig_aliases_recursive(&workspace_root, &tsconfig_path, &mut visiting, &mut aliases)?;
+
+    let mut aliases = aliases.into_values().collect::<Vec<_>>();
+    // More specific aliases must be matched before broad aliases.
+    aliases.sort_by_key(|alias| std::cmp::Reverse(alias.prefix.len()));
+    Ok(aliases)
+}
+
+fn load_tsconfig_aliases_recursive(
+    workspace_root: &Path,
+    tsconfig_path: &Path,
+    visiting: &mut Vec<PathBuf>,
+    aliases: &mut BTreeMap<String, PathAlias>,
+) -> io::Result<()> {
+    let tsconfig_path = normalize_filesystem_path(tsconfig_path);
+    if let Some(start) = visiting.iter().position(|path| path == &tsconfig_path) {
+        let mut cycle = visiting[start..]
+            .iter()
+            .map(|path| display_path(path))
+            .collect::<Vec<_>>();
+        cycle.push(display_path(&tsconfig_path));
+        return invalid_data(format!(
+            "cyclic tsconfig extends chain: {}",
+            cycle.join(" -> ")
+        ));
+    }
+
+    visiting.push(tsconfig_path.clone());
+    let raw = parse_tsconfig(&tsconfig_path)?;
+
+    if let Some(extends) = &raw.extends {
+        for parent in extends.values() {
+            if !is_relative_or_absolute_tsconfig_reference(parent) {
+                continue;
+            }
+            let parent_path = resolve_tsconfig_reference(&tsconfig_path, parent)?;
+            load_tsconfig_aliases_recursive(workspace_root, &parent_path, visiting, aliases)?;
+        }
+    }
+
+    if let Some(compiler_options) = raw.compiler_options {
+        let base_url = compiler_options.base_url.as_deref().unwrap_or(".");
+        if let Some(paths) = compiler_options.paths {
+            for (alias, targets) in paths {
+                let Some(target) = targets.first() else {
+                    continue;
+                };
+                let prefix = alias.strip_suffix('*').unwrap_or(&alias).to_string();
+                if prefix.is_empty() {
+                    continue;
+                }
+                let Some(target_prefix) =
+                    normalize_alias_target(workspace_root, &tsconfig_path, base_url, target)
+                else {
+                    continue;
+                };
+                aliases.insert(
+                    prefix.clone(),
+                    PathAlias {
+                        prefix,
+                        target_prefix,
+                    },
+                );
+            }
+        }
+    }
+
+    visiting.pop();
+    Ok(())
+}
+
+fn parse_tsconfig(path: &Path) -> io::Result<RawTsConfig> {
+    let content = fs::read_to_string(path)?;
     let parse_options = jsonc_parser::ParseOptions {
         allow_comments: true,
         allow_loose_object_property_names: false,
@@ -362,52 +497,91 @@ fn load_tsconfig_path_aliases(root: &Path) -> io::Result<Vec<PathAlias>> {
         allow_hexadecimal_numbers: false,
         allow_unary_plus_numbers: false,
     };
-    let raw = jsonc_parser::parse_to_serde_value::<RawTsConfig>(&content, &parse_options).map_err(
-        |err| {
-            io::Error::new(
-                io::ErrorKind::InvalidData,
-                format!("invalid JSONC in {}: {err}", display_path(&tsconfig_path)),
-            )
-        },
-    )?;
-    let Some(compiler_options) = raw.compiler_options else {
-        return Ok(Vec::new());
-    };
-    let Some(paths) = compiler_options.paths else {
-        return Ok(Vec::new());
-    };
-
-    let mut aliases = Vec::new();
-    for (alias, targets) in paths {
-        let Some(target) = targets.first() else {
-            continue;
-        };
-        let (prefix, target_prefix) = normalize_alias_pair(&alias, target);
-        if !prefix.is_empty() {
-            aliases.push(PathAlias {
-                prefix,
-                target_prefix,
-            });
-        }
-    }
-
-    // 더 구체적인 alias가 먼저 매칭되도록 긴 prefix를 우선한다.
-    // 예: "@/domains/*"가 "@/*"보다 먼저 처리되어야 한다.
-    aliases.sort_by_key(|alias| std::cmp::Reverse(alias.prefix.len()));
-    Ok(aliases)
+    jsonc_parser::parse_to_serde_value::<RawTsConfig>(&content, &parse_options).map_err(|err| {
+        io::Error::new(
+            io::ErrorKind::InvalidData,
+            format!("invalid JSONC in {}: {err}", display_path(path)),
+        )
+    })
 }
 
-fn normalize_alias_pair(alias: &str, target: &str) -> (String, String) {
-    // paths 패턴의 '*'와 './'를 제거해 단순 prefix 치환 형태로 바꾼다.
-    let prefix = alias.strip_suffix('*').unwrap_or(alias).to_string();
-    let target_prefix = target
-        .strip_prefix("./")
-        .unwrap_or(target)
-        .strip_suffix('*')
-        .unwrap_or_else(|| target.strip_prefix("./").unwrap_or(target))
-        .to_string();
+fn is_relative_or_absolute_tsconfig_reference(reference: &str) -> bool {
+    reference.starts_with('.') || Path::new(reference).is_absolute()
+}
 
-    (prefix, target_prefix)
+fn resolve_tsconfig_reference(tsconfig_path: &Path, reference: &str) -> io::Result<PathBuf> {
+    let config_dir = tsconfig_path.parent().unwrap_or_else(|| Path::new("."));
+    let mut candidate = if Path::new(reference).is_absolute() {
+        PathBuf::from(reference)
+    } else {
+        config_dir.join(reference)
+    };
+    candidate = normalize_filesystem_path(&candidate);
+
+    let candidates = if candidate.extension().is_some() {
+        vec![candidate]
+    } else {
+        vec![
+            candidate.clone(),
+            candidate.with_extension("json"),
+            candidate.join("tsconfig.json"),
+        ]
+    };
+    candidates
+        .into_iter()
+        .find(|path| path.is_file())
+        .ok_or_else(|| {
+            io::Error::new(
+                io::ErrorKind::InvalidData,
+                format!(
+                    "extended tsconfig does not exist: {reference} (from {})",
+                    display_path(tsconfig_path)
+                ),
+            )
+        })
+}
+
+fn normalize_alias_target(
+    workspace_root: &Path,
+    tsconfig_path: &Path,
+    base_url: &str,
+    target: &str,
+) -> Option<String> {
+    let target_without_wildcard = target.strip_suffix('*').unwrap_or(target);
+    let keep_trailing_separator =
+        target_without_wildcard.ends_with('/') || target_without_wildcard.ends_with('\\');
+    let config_dir = tsconfig_path.parent().unwrap_or_else(|| Path::new("."));
+    let absolute_target =
+        normalize_filesystem_path(&config_dir.join(base_url).join(target_without_wildcard));
+    let relative = absolute_target.strip_prefix(workspace_root).ok()?;
+    let mut normalized = display_path(relative);
+    if keep_trailing_separator && !normalized.ends_with('/') {
+        normalized.push('/');
+    }
+    Some(normalized)
+}
+
+fn absolute_normalized_path(path: &Path) -> io::Result<PathBuf> {
+    if path.is_absolute() {
+        return Ok(normalize_filesystem_path(path));
+    }
+    Ok(normalize_filesystem_path(
+        &std::env::current_dir()?.join(path),
+    ))
+}
+
+fn normalize_filesystem_path(path: &Path) -> PathBuf {
+    let mut normalized = PathBuf::new();
+    for component in path.components() {
+        match component {
+            std::path::Component::CurDir => {}
+            std::path::Component::ParentDir => {
+                normalized.pop();
+            }
+            other => normalized.push(other.as_os_str()),
+        }
+    }
+    normalized
 }
 
 fn validate_public_api_path(path: &str) -> io::Result<()> {
@@ -547,11 +721,30 @@ struct RawDomainManifest {
 #[derive(Debug, Default, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct RawTsConfig {
+    extends: Option<RawTsConfigExtends>,
     compiler_options: Option<RawCompilerOptions>,
 }
 
+#[derive(Debug, Deserialize)]
+#[serde(untagged)]
+enum RawTsConfigExtends {
+    One(String),
+    Many(Vec<String>),
+}
+
+impl RawTsConfigExtends {
+    fn values(&self) -> Vec<&str> {
+        match self {
+            Self::One(value) => vec![value],
+            Self::Many(values) => values.iter().map(String::as_str).collect(),
+        }
+    }
+}
+
 #[derive(Debug, Default, Deserialize)]
+#[serde(rename_all = "camelCase")]
 struct RawCompilerOptions {
+    base_url: Option<String>,
     paths: Option<BTreeMap<String, Vec<String>>>,
 }
 

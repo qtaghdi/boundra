@@ -4,20 +4,25 @@
 
 Boundra now has a usable MVP foundation:
 
-- `check-boundaries` detects BR-001 through BR-004.
+- `check-boundaries` detects BR-001 through BR-006.
 - `create-domain <name>` scaffolds domain folders, `domain.json`, and public API stubs.
 - `boundra.config.json` is loaded for core project paths, domain defaults, scanner extensions, and ignore paths.
 - `domains/<domain>/domain.json` is loaded and validated for name, public API files, and declared dependencies.
 - BR-004 uses manifest-declared `publicApi` entries when available.
+- BR-006 requires cross-domain public imports to match the source manifest's
+  `dependsOn` graph, and cyclic graphs are rejected.
 - CLI fixture tests cover boundary output, project roots, scaffolding, manifest validation, and ignored paths.
 - Config and manifest JSON parsing uses `serde` and `serde_json`.
 - `check-boundaries --format json` is serialized from typed output structs.
 - Import scanning supports multiline static imports/exports and dynamic `import(...)`.
 - Interpolated dynamic import templates are excluded because they do not resolve
   to one static boundary target.
-- `tsconfig.json` path aliases are resolved during boundary checks.
+- `tsconfig.json` path aliases, including relative `extends` chains, are
+  resolved during boundary checks.
 - `tsconfig.json` is parsed as JSONC, including comments and trailing commas.
 - Default scans ignore Next, Turbo, and agent worktree output.
+- Default scans include Svelte sources, and configured framework paths are used
+  consistently by the rule engine.
 - `graph-domains` outputs domain dependency graphs as Mermaid, DOT, or JSON.
 - `generate route|query|mutation <domain>/<name>` scaffolds contract-centered stubs.
 - CLI command handlers are split into focused modules for parsing, output, utilities, and command execution.
@@ -90,8 +95,9 @@ Boundary checks now resolve simple `tsconfig.json` `compilerOptions.paths` alias
 
 Completed:
 
-- Parse alias mappings from root `tsconfig.json`.
+- Parse alias mappings from root and relatively extended `tsconfig.json` files.
 - Resolve aliases such as `@domains/*` to `domains/*`.
+- Apply each config's `baseUrl` and let child aliases override parent aliases.
 - Preserve existing relative and `domains/` import behavior.
 - Added E2E coverage for alias-resolved violations.
 

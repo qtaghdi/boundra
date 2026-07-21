@@ -54,6 +54,8 @@ pub(crate) fn run(options: &CheckBoundariesOptions) -> i32 {
         &imports,
         &BoundaryContext {
             apps_path: project.config.paths.apps.clone(),
+            domains_path: project.config.paths.domains.clone(),
+            packages_path: project.config.paths.packages.clone(),
             domains: project.domains,
             path_aliases: project.path_aliases,
         },

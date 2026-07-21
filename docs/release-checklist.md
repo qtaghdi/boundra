@@ -2,7 +2,7 @@
 
 ## Code and Contracts
 
-- [x] BR-001 through BR-005 are implemented and tested
+- [x] BR-001 through BR-006 are implemented and tested
 - [x] schema-backed generated contracts are runtime validated
 - [x] CLI diagnostics include stable codes and recovery suggestions
 - [x] manifest, diagnostic, contract, and packaging specs are documented

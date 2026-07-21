@@ -102,7 +102,7 @@ fn config_json(name: &str) -> String {
     }}
   }},
   "checkBoundaries": {{
-    "includeExtensions": ["ts", "tsx", "js", "jsx"],
+    "includeExtensions": ["ts", "tsx", "js", "jsx", "svelte"],
     "ignore": [
 {ignore_patterns}
     ]

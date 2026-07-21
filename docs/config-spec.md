@@ -86,7 +86,7 @@ These defaults are used by `create-domain`.
 ```json
 {
   "checkBoundaries": {
-    "includeExtensions": ["ts", "tsx", "js", "jsx"],
+    "includeExtensions": ["ts", "tsx", "js", "jsx", "svelte"],
     "ignore": [
       "**/node_modules/**",
       "**/.next/**",
@@ -130,7 +130,7 @@ When no config file is present, Boundra behaves as if the following config exist
     }
   },
   "checkBoundaries": {
-    "includeExtensions": ["ts", "tsx", "js", "jsx"],
+    "includeExtensions": ["ts", "tsx", "js", "jsx", "svelte"],
     "ignore": [
       "**/node_modules/**",
       "**/.next/**",
@@ -156,10 +156,14 @@ When no config file is present, Boundra behaves as if the following config exist
 
 ## 6. TypeScript Path Aliases
 
-When a root `tsconfig.json` exists, Boundra reads
-`compilerOptions.paths` for boundary resolution. The file is parsed as JSONC,
-including comments and trailing commas, to match normal TypeScript configuration
-syntax.
+When a root `tsconfig.json` exists, Boundra reads `compilerOptions.paths` for
+boundary resolution. Relative `extends` chains are resolved from parent to
+child, and child aliases override aliases with the same pattern. Alias targets
+respect the `baseUrl` of the config that declares them.
+
+Each file is parsed as JSONC, including comments and trailing commas, to match
+normal TypeScript configuration syntax. Package-based `extends` values are
+ignored until Boundra defines package resolution semantics.
 
 Only `compilerOptions.paths` affects the Boundra project model. Other TypeScript
 compiler options remain owned by the TypeScript toolchain.

@@ -26,6 +26,7 @@ impl Default for ScanOptions {
                 "tsx".to_string(),
                 "js".to_string(),
                 "jsx".to_string(),
+                "svelte".to_string(),
             ],
             ignore: DEFAULT_BOUNDARY_IGNORE_PATTERNS
                 .iter()
