@@ -15,7 +15,7 @@ export function createHttpTransport(
   }
   const baseUrl = options.baseUrl.replace(/\/$/, "");
 
-  return async (contract) => {
+  return async (contract, callOptions) => {
     const response = await request(
       `${baseUrl}/contracts/${encodeURIComponent(contract.name)}`,
       {
@@ -25,6 +25,7 @@ export function createHttpTransport(
           ...options.headers,
         },
         body: JSON.stringify(contract),
+        signal: callOptions?.signal,
       },
     );
     if (!response.ok) {

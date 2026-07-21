@@ -16,8 +16,13 @@ export type BoundraTransportRequest = {
   input: unknown;
 };
 
+export type BoundraCallOptions = {
+  signal?: AbortSignal;
+};
+
 export type BoundraTransport = (
   request: BoundraTransportRequest,
+  options?: BoundraCallOptions,
 ) => Promise<unknown>;
 
 export type BoundraClient = {
@@ -27,6 +32,7 @@ export type BoundraClient = {
   >(
     contract: BoundraQuery<InputSchema, ResultSchema>,
     input: InferSchema<InputSchema>,
+    options?: BoundraCallOptions,
   ): Promise<InferSchema<ResultSchema>>;
   mutation<
     InputSchema extends BoundraSchema<unknown>,
@@ -34,6 +40,7 @@ export type BoundraClient = {
   >(
     contract: BoundraMutation<InputSchema, ResultSchema>,
     input: InferSchema<InputSchema>,
+    options?: BoundraCallOptions,
   ): Promise<InferSchema<ResultSchema>>;
 };
 
@@ -46,6 +53,7 @@ export function createBoundraClient(transport: BoundraTransport): BoundraClient 
       | BoundraQuery<InputSchema, ResultSchema>
       | BoundraMutation<InputSchema, ResultSchema>,
     input: InferSchema<InputSchema>,
+    options?: BoundraCallOptions,
   ): Promise<InferSchema<ResultSchema>> {
     const parsedInput = parseContractValue(
       contract.input,
@@ -56,12 +64,18 @@ export function createBoundraClient(transport: BoundraTransport): BoundraClient 
 
     let rawResult: unknown;
     try {
-      rawResult = await transport({
-        kind: contract.kind,
-        name: contract.name,
-        input: parsedInput,
-      });
+      rawResult = await transport(
+        {
+          kind: contract.kind,
+          name: contract.name,
+          input: parsedInput,
+        },
+        options,
+      );
     } catch (cause) {
+      if (options?.signal?.aborted) {
+        throw cause;
+      }
       throw new BoundraRuntimeError({
         code: "RUNTIME-003",
         contract: contract.name,
@@ -81,7 +95,7 @@ export function createBoundraClient(transport: BoundraTransport): BoundraClient 
   }
 
   return {
-    query: (contract, input) => send(contract, input),
-    mutation: (contract, input) => send(contract, input),
+    query: (contract, input, options) => send(contract, input, options),
+    mutation: (contract, input, options) => send(contract, input, options),
   };
 }

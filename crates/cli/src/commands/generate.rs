@@ -246,7 +246,7 @@ fn scaffold_generated_artifact(
             write_new_file(
                 &query_path,
                 &format!(
-                    "import type {{ BoundraClient }} from \"boundra\";\n\nimport {{\n  {function_name}Query,\n  type {type_name}QueryInput,\n}} from \"../../shared/contracts/{name}\";\n\nexport function {function_name}(\n  client: BoundraClient,\n  input: {type_name}QueryInput,\n) {{\n  return client.query({function_name}Query, input);\n}}\n",
+                    "import type {{ BoundraCallOptions, BoundraClient }} from \"boundra\";\n\nimport {{\n  {function_name}Query,\n  type {type_name}QueryInput,\n}} from \"../../shared/contracts/{name}\";\n\nexport function {function_name}(\n  client: BoundraClient,\n  input: {type_name}QueryInput,\n  options?: BoundraCallOptions,\n) {{\n  return client.query({function_name}Query, input, options);\n}}\n",
                     name = options.name,
                     function_name = camel_case(&options.name)
                 ),
@@ -278,7 +278,7 @@ fn scaffold_generated_artifact(
             write_new_file(
                 &mutation_path,
                 &format!(
-                    "import type {{ BoundraClient }} from \"boundra\";\n\nimport {{\n  {function_name}Mutation,\n  type {type_name}MutationInput,\n}} from \"../../shared/contracts/{name}\";\n\nexport function {function_name}(\n  client: BoundraClient,\n  input: {type_name}MutationInput,\n) {{\n  return client.mutation({function_name}Mutation, input);\n}}\n",
+                    "import type {{ BoundraCallOptions, BoundraClient }} from \"boundra\";\n\nimport {{\n  {function_name}Mutation,\n  type {type_name}MutationInput,\n}} from \"../../shared/contracts/{name}\";\n\nexport function {function_name}(\n  client: BoundraClient,\n  input: {type_name}MutationInput,\n  options?: BoundraCallOptions,\n) {{\n  return client.mutation({function_name}Mutation, input, options);\n}}\n",
                     name = options.name,
                     function_name = camel_case(&options.name)
                 ),
@@ -311,7 +311,7 @@ fn scaffold_generated_artifact(
             write_new_file(
                 &resource_path,
                 &format!(
-                    "import type {{ BoundraClient, ContractInput }} from \"boundra\";\n\nimport {{\n  create{type_name}Mutation,\n  delete{type_name}Mutation,\n  list{plural_type_name}Query,\n  update{type_name}Mutation,\n}} from \"../../shared/contracts/{name}\";\n\nexport const list{plural_type_name} = (client: BoundraClient) => client.query(list{plural_type_name}Query, {{}});\nexport const create{type_name} = (client: BoundraClient, input: ContractInput<typeof create{type_name}Mutation>) => client.mutation(create{type_name}Mutation, input);\nexport const update{type_name} = (client: BoundraClient, input: ContractInput<typeof update{type_name}Mutation>) => client.mutation(update{type_name}Mutation, input);\nexport const delete{type_name} = (client: BoundraClient, input: ContractInput<typeof delete{type_name}Mutation>) => client.mutation(delete{type_name}Mutation, input);\n",
+                    "import type {{ BoundraCallOptions, BoundraClient, ContractInput }} from \"boundra\";\n\nimport {{\n  create{type_name}Mutation,\n  delete{type_name}Mutation,\n  list{plural_type_name}Query,\n  update{type_name}Mutation,\n}} from \"../../shared/contracts/{name}\";\n\nexport const list{plural_type_name} = (client: BoundraClient, options?: BoundraCallOptions) => client.query(list{plural_type_name}Query, {{}}, options);\nexport const create{type_name} = (client: BoundraClient, input: ContractInput<typeof create{type_name}Mutation>, options?: BoundraCallOptions) => client.mutation(create{type_name}Mutation, input, options);\nexport const update{type_name} = (client: BoundraClient, input: ContractInput<typeof update{type_name}Mutation>, options?: BoundraCallOptions) => client.mutation(update{type_name}Mutation, input, options);\nexport const delete{type_name} = (client: BoundraClient, input: ContractInput<typeof delete{type_name}Mutation>, options?: BoundraCallOptions) => client.mutation(delete{type_name}Mutation, input, options);\n",
                     plural_type_name = pascal_case(&plural_name),
                 ),
             )?;

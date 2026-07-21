@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use boundra_core::{DomainManifest, Layer, PathAlias, RuleCode, Violation};
+use boundra_core::{DomainManifest, Layer, PathAlias, PublicApi, RuleCode, Violation};
 use boundra_parser::ImportRecord;
 
 pub fn check_boundaries(imports: &[ImportRecord]) -> Vec<Violation> {
@@ -35,7 +35,7 @@ pub fn check_boundaries_with_context(
     let mut violations = Vec::new();
 
     for record in imports {
-        let source = parse_domain_path(&record.source_file, &context.domains_path);
+        let source = parse_domain_path_with_context(&record.source_file, context);
         let (source_domain, source_layer) = source
             .clone()
             .map_or((String::new(), Layer::Unknown), |(domain, layer)| {
@@ -67,7 +67,7 @@ pub fn check_boundaries_with_context(
         let Some(target) = resolved_target else {
             continue;
         };
-        let target_parsed = parse_domain_path(&target, &context.domains_path);
+        let target_parsed = parse_domain_path_with_context(&target, context);
         let (target_domain, target_layer) = target_parsed
             .clone()
             .map_or((String::new(), Layer::Unknown), |(domain, layer)| {
@@ -209,6 +209,50 @@ fn parse_domain_path(path: &str, domains_path: &str) -> Option<(String, Layer)> 
     };
 
     Some((domain, layer))
+}
+
+fn parse_domain_path_with_context(
+    path: &str,
+    context: &BoundaryContext,
+) -> Option<(String, Layer)> {
+    let (domain, layer) = parse_domain_path(path, &context.domains_path)?;
+    if layer != Layer::Unknown || !is_direct_domain_child(path, &context.domains_path) {
+        return Some((domain, layer));
+    }
+
+    let compact_layer = context
+        .domains
+        .get(&domain)
+        .and_then(|manifest| single_public_api_layer(&manifest.public_api))
+        .unwrap_or(Layer::Unknown);
+    Some((domain, compact_layer))
+}
+
+fn is_direct_domain_child(path: &str, domains_path: &str) -> bool {
+    let normalized = normalize_path(path);
+    let normalized_root = normalize_path(domains_path);
+    let relative = if normalized_root.is_empty() {
+        normalized.as_str()
+    } else if let Some(relative) = normalized.strip_prefix(&format!("{normalized_root}/")) {
+        relative
+    } else {
+        return false;
+    };
+
+    relative.split('/').count() == 2
+}
+
+fn single_public_api_layer(public_api: &PublicApi) -> Option<Layer> {
+    let layers = [
+        (!public_api.client.is_empty(), Layer::Client),
+        (!public_api.server.is_empty(), Layer::Server),
+        (!public_api.shared.is_empty(), Layer::Shared),
+    ];
+    let mut declared = layers
+        .into_iter()
+        .filter_map(|(is_declared, layer)| is_declared.then_some(layer));
+    let layer = declared.next()?;
+    declared.next().is_none().then_some(layer)
 }
 
 fn is_cross_domain_internal_import(
@@ -799,5 +843,114 @@ mod tests {
         assert_eq!(violations.len(), 1);
         assert_eq!(violations[0].rule, RuleCode::Br005);
         assert_eq!(violations[0].file, "src/main.ts");
+    }
+
+    #[test]
+    fn enforces_shared_purity_for_compact_single_layer_domain() {
+        let imports = vec![ImportRecord {
+            source_file: "domains/appearance-guidance/public.ts".to_string(),
+            source_dir: "domains/appearance-guidance".to_string(),
+            line: 1,
+            import_path: "react".to_string(),
+        }];
+        let context = BoundaryContext {
+            apps_path: "apps".to_string(),
+            domains_path: "domains".to_string(),
+            packages_path: "packages".to_string(),
+            domains: BTreeMap::from([(
+                "appearance-guidance".to_string(),
+                DomainManifest {
+                    name: "appearance-guidance".to_string(),
+                    public_api: PublicApi {
+                        client: Vec::new(),
+                        server: Vec::new(),
+                        shared: vec!["./public.ts".to_string()],
+                    },
+                    depends_on: Vec::new(),
+                },
+            )]),
+            path_aliases: Vec::new(),
+        };
+
+        let violations = check_boundaries_with_context(&imports, &context);
+        assert_eq!(violations.len(), 1);
+        assert_eq!(violations[0].rule, RuleCode::Br003);
+    }
+
+    #[test]
+    fn enforces_client_to_server_rule_for_compact_single_layer_domain() {
+        let imports = vec![ImportRecord {
+            source_file: "domains/comparison/storage.ts".to_string(),
+            source_dir: "domains/comparison".to_string(),
+            line: 1,
+            import_path: "../analysis/server/public".to_string(),
+        }];
+        let context = BoundaryContext {
+            apps_path: "apps".to_string(),
+            domains_path: "domains".to_string(),
+            packages_path: "packages".to_string(),
+            domains: BTreeMap::from([
+                (
+                    "comparison".to_string(),
+                    DomainManifest {
+                        name: "comparison".to_string(),
+                        public_api: PublicApi {
+                            client: vec!["./public.ts".to_string()],
+                            server: Vec::new(),
+                            shared: Vec::new(),
+                        },
+                        depends_on: vec!["analysis".to_string()],
+                    },
+                ),
+                (
+                    "analysis".to_string(),
+                    DomainManifest {
+                        name: "analysis".to_string(),
+                        public_api: PublicApi {
+                            client: Vec::new(),
+                            server: vec!["./server/public.ts".to_string()],
+                            shared: Vec::new(),
+                        },
+                        depends_on: Vec::new(),
+                    },
+                ),
+            ]),
+            path_aliases: Vec::new(),
+        };
+
+        let violations = check_boundaries_with_context(&imports, &context);
+        assert_eq!(violations.len(), 1);
+        assert_eq!(violations[0].rule, RuleCode::Br001);
+    }
+
+    #[test]
+    fn does_not_infer_compact_layer_for_nested_root_directory() {
+        let imports = vec![ImportRecord {
+            source_file: "domains/appearance-guidance/internal/helper.ts".to_string(),
+            source_dir: "domains/appearance-guidance/internal".to_string(),
+            line: 1,
+            import_path: "react".to_string(),
+        }];
+        let context = BoundaryContext {
+            apps_path: "apps".to_string(),
+            domains_path: "domains".to_string(),
+            packages_path: "packages".to_string(),
+            domains: BTreeMap::from([(
+                "appearance-guidance".to_string(),
+                DomainManifest {
+                    name: "appearance-guidance".to_string(),
+                    public_api: PublicApi {
+                        client: Vec::new(),
+                        server: Vec::new(),
+                        shared: vec!["./public.ts".to_string()],
+                    },
+                    depends_on: Vec::new(),
+                },
+            )]),
+            path_aliases: Vec::new(),
+        };
+
+        let violations = check_boundaries_with_context(&imports, &context);
+        assert!(violations.is_empty());
     }
 }

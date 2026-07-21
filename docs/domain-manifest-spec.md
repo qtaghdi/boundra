@@ -85,14 +85,43 @@ Existing `publicApi.shared` entries are preserved. Duplicate entries are not add
 
 Generation also appends an idempotent export to `shared/public.ts`.
 
-## 7. Dependency Update Behavior
+## 7. Compact Single-Layer Domains
+
+A domain with exactly one non-empty public API category may keep its direct
+implementation files at the domain root:
+
+```txt
+domains/comparison/
+├── domain.json
+├── public.ts
+├── storage.ts
+└── tests/
+    └── storage.spec.ts
+```
+
+```json
+{
+  "publicApi": {
+    "client": ["./public.ts"],
+    "server": [],
+    "shared": []
+  }
+}
+```
+
+Direct root files inherit that single layer for boundary enforcement. Explicit
+layer directories retain their normal meaning, and nested root directories do
+not inherit the compact layer. Domains exposing two or more public API
+categories must use explicit layer directories.
+
+## 8. Dependency Update Behavior
 
 `add-dependency <domain>/<dependency>` appends the dependency to `dependsOn`.
 Both domains must exist, self-dependencies are rejected, and repeated calls do
 not add duplicates. An edge that would create a dependency cycle is rejected
 without changing the manifest.
 
-## 8. Versioning
+## 9. Versioning
 
 Initial schema version:
 

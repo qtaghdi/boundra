@@ -27,6 +27,7 @@ on a structural `parse(unknown)` contract.
 - `defineRoute`, `defineQuery`, `defineMutation`
 - `createBoundraClient`
 - `createHttpTransport`
+- per-call `BoundraCallOptions` with `AbortSignal` propagation
 - `implementRoute`, `implementQuery`, `implementMutation`
 - `executeContract`
 - `BoundraRuntimeError`
@@ -45,6 +46,16 @@ try {
 
 `error.toJSON()` returns a safe diagnostic shape without the original input or
 internal `cause`, suitable for development overlays and application error UIs.
+
+Query and mutation calls accept optional per-call cancellation:
+
+```ts
+const controller = new AbortController();
+await client.query(getTaskQuery, input, { signal: controller.signal });
+```
+
+The signal reaches custom transports and `createHttpTransport`. If the request
+is intentionally aborted, the original cancellation error is preserved.
 
 See the repository documentation for CLI installation, contract generation,
 and host integration.

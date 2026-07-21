@@ -40,10 +40,12 @@ const response = await client.query(query, { id: "item-001" });
 assert(response.id === "item-001", "client should return a parsed result");
 
 let receivedHttpBody = "";
+let receivedHttpSignal: AbortSignal | null | undefined;
 const httpClient = createBoundraClient(createHttpTransport({
   baseUrl: "https://example.test/api/boundra/",
   fetch: async (_url, init) => {
     receivedHttpBody = String(init?.body);
+    receivedHttpSignal = init?.signal;
     const request = JSON.parse(receivedHttpBody) as { input: unknown };
     return new Response(JSON.stringify({ result: request.input }), {
       status: 200,
@@ -51,9 +53,30 @@ const httpClient = createBoundraClient(createHttpTransport({
     });
   },
 }));
-const httpResponse = await httpClient.query(query, { id: "item-http" });
+const httpController = new AbortController();
+const httpResponse = await httpClient.query(
+  query,
+  { id: "item-http" },
+  { signal: httpController.signal },
+);
 assert(httpResponse.id === "item-http", "HTTP transport should unwrap result");
 assert(receivedHttpBody.includes('"kind":"query"'), "HTTP transport should send contract kind");
+assert(receivedHttpSignal === httpController.signal, "HTTP transport should receive the call signal");
+
+const abortController = new AbortController();
+abortController.abort();
+let receivedCustomSignal: AbortSignal | undefined;
+try {
+  await createBoundraClient(async (_request, options) => {
+    receivedCustomSignal = options?.signal;
+    options?.signal?.throwIfAborted();
+    return { id: "unreachable" };
+  }).query(query, { id: "item-aborted" }, { signal: abortController.signal });
+  throw new Error("expected cancellation");
+} catch (error) {
+  assert(error === abortController.signal.reason, "cancellation should preserve the original error");
+}
+assert(receivedCustomSignal === abortController.signal, "custom transport should receive call options");
 
 await expectRuntimeError("RUNTIME-003", () =>
   createBoundraClient(createHttpTransport({

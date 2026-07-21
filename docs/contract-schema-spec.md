@@ -52,6 +52,10 @@ creation and are never overwritten.
 
 - client query/mutation calls parse input before transport
 - transport results are parsed before returning to application code
+- client calls may pass an `AbortSignal`; the signal is forwarded to custom and
+  HTTP transports
+- intentional cancellation is rethrown unchanged instead of being reported as
+  a `RUNTIME-003` transport failure
 - server route execution parses input before the handler and parses the handler
   result before returning
 - missing handlers and schema parse failures surface typed runtime errors

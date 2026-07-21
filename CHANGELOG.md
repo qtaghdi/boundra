@@ -6,6 +6,17 @@ The format follows Keep a Changelog and versions follow Semantic Versioning.
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-07-21
+
+### Added
+
+- per-call `AbortSignal` propagation through Boundra clients and transports
+- compact root layouts for domains that expose exactly one public API layer
+
+### Changed
+
+- preserve intentional request cancellation instead of wrapping it as `RUNTIME-003`
+
 ## [0.2.0] - 2026-07-21
 
 ### Added

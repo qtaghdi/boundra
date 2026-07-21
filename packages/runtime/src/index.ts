@@ -1,5 +1,6 @@
 export {
   createBoundraClient,
+  type BoundraCallOptions,
   type BoundraClient,
   type BoundraTransport,
   type BoundraTransportRequest,

@@ -37,6 +37,13 @@
 - `domain -> declared dependency public API`
 - `app -> domain public API`
 
+### Compact single-layer layout
+
+If exactly one manifest public API category is non-empty, direct files under
+that domain root are analyzed as that category's layer. This is a layout
+shortcut only; all existing layer and public API rules still apply. See ADR
+0009.
+
 ## 3. Violation Output Format
 
 CLI는 위반 시 아래 구조를 제공해야 한다.

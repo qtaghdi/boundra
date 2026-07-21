@@ -168,6 +168,30 @@ The follow-up framework slice resolved the four observed gaps:
 The dogfood command executes valid route/query/mutation flows and verifies an
 invalid input produces `RUNTIME-001`.
 
+## 2026-07-21 Presence Integration
+
+### What Was Tested
+
+- adopted Boundra in a SvelteKit image-analysis application
+- declared four existing domains and replaced internal app imports with public APIs
+- wrapped a multipart image-analysis mutation with client and server runtime validation
+- enabled the Vite overlay and boundary checks in the normal project workflow
+
+### Observed Friction
+
+- each analysis call needs its own `AbortSignal`, but `BoundraClient` could not
+  pass call context to a transport
+- wrapping intentional fetch cancellation as `RUNTIME-003` made UI cancellation
+  indistinguishable from a network failure
+- multipart encoding belongs in the application adapter and does not require a
+  framework-owned serializer
+
+### Resolution
+
+- add optional `BoundraCallOptions` to query and mutation calls
+- forward call options to custom transports and `AbortSignal` to HTTP fetch
+- preserve intentional cancellation instead of wrapping it as a transport failure
+
 ## 2026-06-16
 
 ### What Was Tested

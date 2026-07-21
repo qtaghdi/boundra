@@ -89,6 +89,7 @@ const task = await client.query(getTask, { id: "task-001" });
 ```
 
 입력과 transport 결과는 모두 contract schema로 검증됩니다. 실패하면 `RUNTIME-001~003`과 field-level issue가 제공됩니다.
+호출별 `{ signal }`을 세 번째 인자로 전달하면 custom/HTTP transport까지 취소가 전파되며, 의도적인 취소는 `RUNTIME-003`으로 감싸지 않습니다.
 
 ## Boundary Rules
 

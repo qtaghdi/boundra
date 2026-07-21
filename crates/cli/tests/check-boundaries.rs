@@ -823,6 +823,8 @@ fn generate_resource_scaffolds_crud_contracts_and_client_api() {
     assert!(contract.contains("updateTaskMutation"));
     assert!(contract.contains("deleteTaskMutation"));
     assert!(client.contains("export const listTasks"));
+    assert!(client.contains("BoundraCallOptions"));
+    assert!(client.contains("client.query(listTasksQuery, {}, options)"));
 
     let manifest =
         fs::read_to_string(root.join("domains/order/domain.json")).expect("manifest should exist");
@@ -971,8 +973,10 @@ fn generate_query_and_mutation_scaffold_client_adapters() {
             .expect("failed to read generated mutation adapter");
     assert!(query_adapter.contains("from \"boundra\";"));
     assert!(mutation_adapter.contains("from \"boundra\";"));
-    assert!(query_adapter.contains("client.query(listInvoicesQuery, input)"));
-    assert!(mutation_adapter.contains("client.mutation(payInvoiceMutation, input)"));
+    assert!(query_adapter.contains("BoundraCallOptions"));
+    assert!(mutation_adapter.contains("BoundraCallOptions"));
+    assert!(query_adapter.contains("client.query(listInvoicesQuery, input, options)"));
+    assert!(mutation_adapter.contains("client.mutation(payInvoiceMutation, input, options)"));
 
     let public_api = fs::read_to_string(root.join("domains/billing/shared/public.ts"))
         .expect("failed to read shared public API");
