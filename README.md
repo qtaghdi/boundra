@@ -36,6 +36,7 @@ apps/web  ───────▶ domains/order/client/public
 | shared가 UI·DB에 오염됨 | BR-003으로 계약 계층 순수성 보장 |
 | 다른 도메인의 내부 구현을 직접 참조함 | BR-004로 public API만 허용 |
 | 앱이 도메인 내부 경로를 우회함 | BR-005로 composition root까지 보호 |
+| manifest에 없는 숨은 도메인 결합이 생김 | BR-006과 순환 검사로 dependency graph 보호 |
 | API 입력과 결과가 조용히 어긋남 | Zod 기반 input/result runtime 검증 |
 | 오류가 추상적이고 수정 위치가 불명확함 | stable code, field path, suggestion, Vite overlay |
 
@@ -103,6 +104,7 @@ pnpm exec boundra graph-domains --format mermaid
 | `BR-003` | `shared → UI / DB / runtime infra` |
 | `BR-004` | `domain → other domain internal` |
 | `BR-005` | `app → domain internal` |
+| `BR-006` | `domain → undeclared domain public API` |
 
 진단은 rule code, file, line, import, message, suggestion을 포함하며 CI와 AI agent가 사용할 수 있는 안정적인 JSON 형식을 지원합니다.
 
@@ -128,7 +130,7 @@ export default defineConfig({
 | `generate route\|query\|mutation` | schema-backed 계약과 adapter 생성 |
 | `generate resource` | CRUD 계약과 typed client API 생성 |
 | `add-dependency` | domain graph 의존성 선언 |
-| `check-boundaries` | BR-001~005 정적 검사 |
+| `check-boundaries` | BR-001~006 정적 검사 |
 | `graph-domains` | Mermaid, JSON, DOT 의존성 그래프 출력 |
 
 ## Performance

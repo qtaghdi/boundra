@@ -1,5 +1,27 @@
 # Dogfooding Notes
 
+## 2026-07-21: Framework Layout and Dependency Integrity Audit
+
+### Findings
+
+- `paths.domains` controlled manifest loading but the rule engine still assumed
+  a root `domains/` folder.
+- `.svelte` was supported only when manually configured and did not trigger the
+  Vite boundary overlay.
+- generated framework aliases in an extended `tsconfig.json` were invisible to
+  boundary resolution.
+- cross-domain public imports could bypass `dependsOn`, and manifest cycles were
+  accepted.
+
+### Resolution
+
+- propagate configured app, domain, and package roots into boundary checks
+- include Svelte in scanner and Vite defaults
+- resolve relative TypeScript config inheritance with alias overrides
+- add BR-006 for undeclared public imports
+- reject dependency cycles during project loading and before `add-dependency`
+  writes a new edge
+
 ## 2026-07-10: Real Repository Parser and Performance Audit
 
 ### Scope

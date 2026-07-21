@@ -24,11 +24,17 @@
 - Allow: `domains/<domain>/client/public`, `server/public`, `shared/public` 또는 manifest에 명시된 public API
 - Reason: composition root인 앱이 도메인 내부 구현에 결합되는 것을 방지
 
+### BR-006: Declared Domain Dependency Policy
+- Rule: 다른 도메인의 public API를 import하려면 대상 도메인이 소스 manifest의 `dependsOn`에 선언되어야 함
+- Allow: `dependsOn`에 선언된 도메인의 manifest public API
+- Reason: 실제 코드 의존성과 domain graph를 일치시켜 숨은 결합을 방지
+
 ## 2. Allow List
 
 - `client -> shared`
 - `server -> shared`
 - `domain -> other-domain public API`
+- `domain -> declared dependency public API`
 - `app -> domain public API`
 
 ## 3. Violation Output Format
@@ -72,3 +78,9 @@ suggestion: move contract/type to shared or call via public API.
 - Source: `apps/web/src/checkout.ts`
 - Import: `domains/order/server/internal/checkout.ts`
 - Result: BR-005
+
+### Example E
+- Source: `domains/order/server/checkout.ts`
+- Import: `domains/billing/server/public.ts`
+- Manifest: `order.dependsOn` does not include `billing`
+- Result: BR-006

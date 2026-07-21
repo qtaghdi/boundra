@@ -77,7 +77,8 @@
       "ts",
       "tsx",
       "js",
-      "jsx"
+      "jsx",
+      "svelte"
     ],
     "ignore": [
       "**/node_modules/**",

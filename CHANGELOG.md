@@ -6,6 +6,17 @@ The format follows Keep a Changelog and versions follow Semantic Versioning.
 
 ## [Unreleased]
 
+### Added
+
+- BR-006 enforcement for cross-domain public imports missing from `dependsOn`
+- Svelte scanning and Vite hot-update diagnostics by default
+- relative `tsconfig extends` alias resolution with `baseUrl` support
+
+### Changed
+
+- apply configured app, domain, and package roots throughout boundary analysis
+- reject cyclic domain dependency graphs and prevent cycle-producing dependency updates
+
 ## [0.1.2] - 2026-07-03
 
 ### Added

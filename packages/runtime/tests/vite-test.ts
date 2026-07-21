@@ -34,8 +34,9 @@ try {
   const cliPath = resolve("target/debug/boundra");
   const plugin = boundra({ root, cliPath });
   let received: unknown;
+  let publishCount = 0;
   plugin.configureServer({
-    ws: { send(payload) { received = payload.data; } },
+    ws: { send(payload) { received = payload.data; publishCount += 1; } },
   });
   assert(
     JSON.stringify(received).includes("BR-005"),
@@ -44,6 +45,10 @@ try {
   const injected = plugin.transformIndexHtml();
   assert(injected[0]?.attrs.src.includes("virtual:boundra-overlay"), "overlay should be injected");
   assert(plugin.apply === "serve", "overlay must be development-only");
+  plugin.handleHotUpdate({ file: join(root, "apps/web/src/+page.svelte") });
+  assert(publishCount === 2, "Svelte updates should rerun boundary checks");
+  plugin.handleHotUpdate({ file: join(root, "apps/web/src/theme.css") });
+  assert(publishCount === 2, "non-source updates should not rerun boundary checks");
 
   console.log("vite-test: OK");
 } finally {

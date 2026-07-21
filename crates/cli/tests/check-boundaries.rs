@@ -89,6 +89,11 @@ fn init_creates_a_valid_non_destructive_workspace() {
         config["checkBoundaries"]["ignore"],
         default_ignore_patterns_json()
     );
+    assert!(config["checkBoundaries"]["includeExtensions"]
+        .as_array()
+        .is_some_and(|extensions| extensions
+            .iter()
+            .any(|value| value.as_str() == Some("svelte"))));
 
     let check = run_boundra(
         &root,
@@ -209,6 +214,8 @@ fn check_boundaries_defaults_to_text_output() {
 #[test]
 fn check_boundaries_accepts_space_separated_json_format() {
     let root = create_fixture("json-output");
+    write_domain_manifest(&root, "auth", "auth", &[]);
+    write_domain_manifest(&root, "order", "order", &["auth"]);
     fs::write(
         root.join("domains/order/server/checkout.ts"),
         "import { LoginRequest } from '../../auth/shared/public';\n",
@@ -342,6 +349,7 @@ fn check_boundaries_uses_manifest_public_api() {
 
     let create_output = run_boundra(&root, &["create-domain", "billing"]);
     assert_eq!(create_output.status.code(), Some(0));
+    write_domain_manifest(&root, "order", "order", &["billing"]);
 
     fs::create_dir_all(root.join("domains/order/server")).expect("failed to create order server");
     fs::write(
@@ -394,6 +402,20 @@ fn check_boundaries_rejects_unknown_domain_dependency() {
 
     assert_eq!(output.status.code(), Some(2));
     assert!(stderr.contains("depends on unknown domain"));
+}
+
+#[test]
+fn check_boundaries_rejects_domain_dependency_cycles() {
+    let root = create_temp_dir("dependency-cycle");
+    write_domain_manifest(&root, "billing", "billing", &["order"]);
+    write_domain_manifest(&root, "order", "order", &["billing"]);
+
+    let output = run_boundra(&root, &["check-boundaries"]);
+    let stderr = String::from_utf8_lossy(&output.stderr);
+
+    assert_eq!(output.status.code(), Some(2));
+    assert!(stderr.contains("domain dependency cycle detected"));
+    assert!(stderr.contains("billing -> order -> billing"));
 }
 
 #[test]
@@ -560,6 +582,116 @@ fn check_boundaries_resolves_tsconfig_path_aliases() {
 }
 
 #[test]
+fn check_boundaries_resolves_extended_tsconfig_aliases() {
+    let root = create_fixture("extended-path-aliases");
+    fs::create_dir_all(root.join(".framework")).expect("failed to create framework config dir");
+    fs::write(
+        root.join(".framework/tsconfig.json"),
+        r#"{
+  "compilerOptions": {
+    "baseUrl": "..",
+    "paths": {
+      "@domains/*": ["domains/*"]
+    }
+  }
+}
+"#,
+    )
+    .expect("failed to write parent tsconfig");
+    fs::write(
+        root.join("tsconfig.json"),
+        r#"{
+  "extends": "./.framework/tsconfig.json"
+}
+"#,
+    )
+    .expect("failed to write root tsconfig");
+    fs::write(
+        root.join("domains/order/client/use-order.ts"),
+        "import { checkout } from '@domains/order/server/checkout';\n",
+    )
+    .expect("failed to write fixture file");
+    fs::write(
+        root.join("domains/order/server/checkout.ts"),
+        "export {};\n",
+    )
+    .expect("failed to write fixture file");
+
+    let output = run_boundra(&root, &["check-boundaries", "--format", "json"]);
+    let json = parse_json_stdout(&output);
+
+    assert_eq!(output.status.code(), Some(1));
+    assert_eq!(json["violations"][0]["rule"], "BR-001");
+}
+
+#[test]
+fn check_boundaries_scans_svelte_under_a_configured_domain_root() {
+    let root = create_temp_dir("svelte-custom-domains");
+    fs::create_dir_all(root.join("src/lib/domains/order/client"))
+        .expect("failed to create custom client layer");
+    fs::create_dir_all(root.join("src/lib/domains/order/server"))
+        .expect("failed to create custom server layer");
+    fs::write(
+        root.join("boundra.config.json"),
+        r#"{
+  "paths": {
+    "apps": "src/routes",
+    "domains": "src/lib/domains",
+    "packages": "src/lib/packages"
+  }
+}
+"#,
+    )
+    .expect("failed to write Boundra config");
+    fs::write(
+        root.join("src/lib/domains/order/client/+page.svelte"),
+        r#"<script lang="ts">
+  import { checkout } from '../server/checkout';
+</script>
+"#,
+    )
+    .expect("failed to write Svelte fixture");
+    fs::write(
+        root.join("src/lib/domains/order/server/checkout.ts"),
+        "export const checkout = true;\n",
+    )
+    .expect("failed to write server fixture");
+
+    let output = run_boundra(&root, &["check-boundaries", "--format", "json"]);
+    let json = parse_json_stdout(&output);
+
+    assert_eq!(output.status.code(), Some(1));
+    assert_eq!(json["violations"][0]["rule"], "BR-001");
+    assert_eq!(
+        json["violations"][0]["file"],
+        "src/lib/domains/order/client/+page.svelte"
+    );
+}
+
+#[test]
+fn check_boundaries_rejects_undeclared_domain_public_import() {
+    let root = create_temp_dir("undeclared-domain-import");
+    write_domain_manifest(&root, "billing", "billing", &[]);
+    write_domain_manifest(&root, "order", "order", &[]);
+    fs::create_dir_all(root.join("domains/order/server"))
+        .expect("failed to create order server layer");
+    fs::write(
+        root.join("domains/order/server/checkout.ts"),
+        "import '../../billing/shared/public';\n",
+    )
+    .expect("failed to write order import");
+
+    let output = run_boundra(&root, &["check-boundaries", "--format", "json"]);
+    let json = parse_json_stdout(&output);
+
+    assert_eq!(output.status.code(), Some(1));
+    assert_eq!(json["violations"][0]["rule"], "BR-006");
+    assert!(json["violations"][0]["suggestion"]
+        .as_str()
+        .is_some_and(|value| value.contains("add-dependency order/billing")));
+}
+
+#[test]
 fn check_boundaries_rejects_non_jsonc_tsconfig_syntax() {
     let root = create_fixture("invalid-tsconfig-jsonc");
     fs::write(
@@ -577,6 +709,31 @@ fn check_boundaries_rejects_non_jsonc_tsconfig_syntax() {
         .as_str()
         .expect("error message should be a string")
         .contains("invalid JSONC"));
+}
+
+#[test]
+fn check_boundaries_rejects_cyclic_tsconfig_extends() {
+    let root = create_fixture("cyclic-tsconfig-extends");
+    fs::write(
+        root.join("tsconfig.json"),
+        r#"{ "extends": "./tsconfig.base.json" }
+"#,
+    )
+    .expect("failed to write root tsconfig");
+    fs::write(
+        root.join("tsconfig.base.json"),
+        r#"{ "extends": "./tsconfig.json" }
+"#,
+    )
+    .expect("failed to write base tsconfig");
+
+    let output = run_boundra(&root, &["check-boundaries", "--format", "json"]);
+    let json = parse_json_stdout(&output);
+
+    assert_eq!(output.status.code(), Some(2));
+    assert!(json["errors"][0]["message"]
+        .as_str()
+        .is_some_and(|value| value.contains("cyclic tsconfig extends chain")));
 }
 
 #[test]
@@ -927,6 +1084,41 @@ fn add_dependency_rejects_self_dependency() {
     assert_eq!(output.status.code(), Some(2));
     assert!(stderr.contains("[ERROR] DEPENDENCY-001"));
     assert!(stderr.contains("cannot depend on itself"));
+}
+
+#[test]
+fn add_dependency_rejects_an_edge_that_would_create_a_cycle() {
+    let root = create_temp_dir("add-dependency-cycle");
+    assert_eq!(
+        run_boundra(&root, &["create-domain", "billing"])
+            .status
+            .code(),
+        Some(0)
+    );
+    assert_eq!(
+        run_boundra(&root, &["create-domain", "order"])
+            .status
+            .code(),
+        Some(0)
+    );
+    assert_eq!(
+        run_boundra(&root, &["add-dependency", "order/billing"])
+            .status
+            .code(),
+        Some(0)
+    );
+
+    let output = run_boundra(&root, &["add-dependency", "billing/order"]);
+    let stderr = String::from_utf8_lossy(&output.stderr);
+
+    assert_eq!(output.status.code(), Some(2));
+    assert!(stderr.contains("[ERROR] DEPENDENCY-003"));
+    assert!(stderr.contains("billing -> order -> billing"));
+
+    let manifest = fs::read_to_string(root.join("domains/billing/domain.json"))
+        .expect("failed to read billing manifest");
+    let manifest_json: Value = serde_json::from_str(&manifest).expect("manifest should be JSON");
+    assert_eq!(manifest_json["dependsOn"], serde_json::json!([]));
 }
 
 #[test]

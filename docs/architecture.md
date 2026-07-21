@@ -54,12 +54,15 @@ framework repository itself as an application.
 - `client -> shared`
 - `server -> shared`
 - `domain -> other-domain public API`
+- `domain -> declared dependency public API`
 
 금지:
 - `client -> server`
 - `server -> client`
 - `shared -> UI/DB/infra runtime`
 - `domain -> other-domain internal path`
+- `domain -> undeclared domain public API`
+- cyclic domain dependency graphs
 
 ## 4. Runtime and Tooling
 

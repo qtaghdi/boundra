@@ -22,7 +22,7 @@ Completed:
 
 - `create-domain`
 - `check-boundaries`
-- BR-001 through BR-005
+- BR-001 through BR-006
 - JSON diagnostics and exit codes
 - config and manifest loading
 - CI integration example
@@ -104,6 +104,9 @@ Validated during stabilization:
   source-file/module-path pairs after narrow parser fixes
 - JSONC `tsconfig.json`, generated framework output, and agent worktrees are
   handled by the default project model
+- configured app, domain, and package roots are enforced by every boundary rule
+- relative `tsconfig extends` aliases and Svelte sources are checked by default
+- manifest dependencies are enforced against imports and must remain acyclic
 - a 10,000-file boundary fixture remains below 250 ms warm median and 6 MB RSS
 
 ## Phase 5: Extension Design

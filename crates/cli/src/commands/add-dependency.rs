@@ -1,7 +1,7 @@
 use std::fs;
 use std::path::PathBuf;
 
-use boundra_core::load_project_model;
+use boundra_core::{find_domain_dependency_cycle, load_project_model};
 use serde_json::Value;
 
 use crate::output::{print_error, CliDiagnostic};
@@ -47,6 +47,29 @@ pub(crate) fn run(options: &AddDependencyOptions) -> i32 {
     }
     if !project.domains.contains_key(&options.dependency) {
         print_unknown_domain(&options.dependency, &project.domains, "dependency");
+        return 2;
+    }
+
+    let mut proposed_domains = project.domains.clone();
+    let source = proposed_domains
+        .get_mut(&options.domain)
+        .expect("source domain was validated above");
+    if !source.depends_on.contains(&options.dependency) {
+        source.depends_on.push(options.dependency.clone());
+    }
+    if let Some(cycle) = find_domain_dependency_cycle(&proposed_domains) {
+        print_error(
+            &CliDiagnostic::new(
+                "DEPENDENCY-003",
+                format!(
+                    "dependency would create a cycle: {}",
+                    cycle.join(" -> ")
+                ),
+                "remove an existing edge or choose a dependency direction that keeps the graph acyclic",
+            )
+            .with_context("domain", &options.domain)
+            .with_context("dependency", &options.dependency),
+        );
         return 2;
     }
 
