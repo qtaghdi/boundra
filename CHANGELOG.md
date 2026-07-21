@@ -6,6 +6,8 @@ The format follows Keep a Changelog and versions follow Semantic Versioning.
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-07-21
+
 ### Added
 
 - BR-006 enforcement for cross-domain public imports missing from `dependsOn`
