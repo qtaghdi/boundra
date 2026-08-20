@@ -62,9 +62,12 @@ struct OutputMeta<'a> {
     analyzed_domain_count: usize,
 }
 
+/// Coverage metadata emitted with boundary-check results.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct BoundaryScanCoverage {
+    /// Total source files included by the scanner.
     pub(crate) scanned_file_count: usize,
+    /// Unique domains with at least one included source file.
     pub(crate) analyzed_domain_count: usize,
 }
 

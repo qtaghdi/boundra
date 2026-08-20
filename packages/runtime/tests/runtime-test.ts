@@ -91,6 +91,8 @@ const structuredHttpError = await expectRuntimeError("RUNTIME-003", () =>
       headers: {
         "content-type": "application/problem+json",
         "retry-after": "30",
+        "set-cookie": "session=secret",
+        "x-internal-token": "secret",
       },
     }),
   })).query(query, { id: "item-http" }),
@@ -103,6 +105,11 @@ assert(structuredHttpError.cause.status === 503, "HTTP error should expose statu
 assert(
   structuredHttpError.cause.headers["retry-after"] === "30",
   "HTTP error should expose response headers",
+);
+assert(
+  structuredHttpError.cause.headers["set-cookie"] === undefined
+    && structuredHttpError.cause.headers["x-internal-token"] === undefined,
+  "HTTP error should omit headers outside the safe allowlist",
 );
 assert(
   typeof structuredHttpError.cause.body === "object"

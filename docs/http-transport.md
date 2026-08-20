@@ -31,9 +31,21 @@ failures are wrapped by the client as `RUNTIME-003`.
 ## Structured HTTP errors
 
 Non-2xx responses use `BoundraHttpError`. The error preserves the status,
-status text, response headers, a safely bounded response body, and whether the
-body was truncated. JSON content types are parsed as JSON; other and invalid
-JSON bodies remain text. The body is never included in the error message.
+status text, selected response headers, a safely bounded response body, and
+whether the body was truncated. JSON content types are parsed as JSON; other
+and invalid JSON bodies remain text. The body is never included in the error
+message.
+
+Only these case-insensitive response headers are exposed:
+
+- `content-type`
+- `retry-after`
+- `etag`
+- `x-request-id`
+- `x-correlation-id`
+
+Cookie, authentication, and other response headers are not copied into the
+error, even when the underlying fetch implementation exposes them.
 
 ```ts
 try {
@@ -52,8 +64,7 @@ try {
 `maxErrorBodyBytes` controls the captured body limit and defaults to 64 KiB.
 Set it to `0` to discard error bodies while retaining status and headers.
 Applications must treat server-provided body fields as untrusted and only show
-messages that their API contract marks as safe. Authentication and cookie
-headers should likewise not be logged without redaction.
+messages that their API contract marks as safe.
 
 ## Custom transports
 

@@ -257,6 +257,52 @@ fn check_boundaries_warns_when_scan_and_domain_set_are_empty() {
 }
 
 #[test]
+fn check_boundaries_does_not_count_fully_ignored_domains_as_analyzed() {
+    let root = create_temp_dir("ignored-domain-coverage");
+    assert_eq!(
+        run_boundra(&root, &["init", "--name", "ignored-domain-app"])
+            .status
+            .code(),
+        Some(0)
+    );
+    assert_eq!(
+        run_boundra(&root, &["create-domain", "scrim"])
+            .status
+            .code(),
+        Some(0)
+    );
+    fs::write(root.join("apps/main.ts"), "export {};\n").expect("failed to write app source");
+
+    let config_path = root.join("boundra.config.json");
+    let mut config: Value =
+        serde_json::from_slice(&fs::read(&config_path).expect("failed to read config"))
+            .expect("config should be JSON");
+    config["checkBoundaries"]["ignore"]
+        .as_array_mut()
+        .expect("ignore should be an array")
+        .push(Value::String("domains/**".to_string()));
+    fs::write(
+        &config_path,
+        format!(
+            "{}\n",
+            serde_json::to_string_pretty(&config).expect("failed to serialize config")
+        ),
+    )
+    .expect("failed to update config");
+
+    let json_output = run_boundra(&root, &["check-boundaries", "--format", "json"]);
+    let json = parse_json_stdout(&json_output);
+    assert_eq!(json_output.status.code(), Some(0));
+    assert_eq!(json["meta"]["scanned_file_count"], 1);
+    assert_eq!(json["meta"]["analyzed_domain_count"], 0);
+
+    let text_output = run_boundra(&root, &["check-boundaries"]);
+    let stdout = String::from_utf8_lossy(&text_output.stdout);
+    assert!(stdout.contains("[WARNING] check-boundaries analyzed no domains"));
+    assert!(!stdout.contains("scanned no source files"));
+}
+
+#[test]
 fn generated_shared_contract_is_valid_when_apps_path_is_workspace_root() {
     let root = create_temp_dir("root-app-generated-contract");
     assert_eq!(
@@ -1019,7 +1065,11 @@ fn generate_query_and_mutation_scaffold_client_adapters() {
     assert_eq!(create_output.status.code(), Some(0));
     fs::write(
         root.join("domains/billing/client/public.ts"),
-        "export const existingClientApi = true;\n",
+        concat!(
+            "export const existingClientApi = true;\n",
+            "export * from './queries/list-invoices' // predeclared\n",
+            "export * from \"./mutations/pay-invoice\" // predeclared\n",
+        ),
     )
     .expect("failed to seed existing client public API");
 
@@ -1073,18 +1123,8 @@ fn generate_query_and_mutation_scaffold_client_adapters() {
     let client_public = fs::read_to_string(root.join("domains/billing/client/public.ts"))
         .expect("failed to read client public API");
     assert!(client_public.contains("export const existingClientApi = true;"));
-    assert_eq!(
-        client_public
-            .matches("export * from \"./queries/list-invoices\";")
-            .count(),
-        1
-    );
-    assert_eq!(
-        client_public
-            .matches("export * from \"./mutations/pay-invoice\";")
-            .count(),
-        1
-    );
+    assert_eq!(client_public.matches("./queries/list-invoices").count(), 1);
+    assert_eq!(client_public.matches("./mutations/pay-invoice").count(), 1);
 
     let public_api = fs::read_to_string(root.join("domains/billing/shared/public.ts"))
         .expect("failed to read shared public API");
@@ -1104,6 +1144,65 @@ fn generate_query_and_mutation_scaffold_client_adapters() {
     assert!(shared
         .iter()
         .any(|value| value.as_str() == Some("./shared/contracts/pay-invoice.ts")));
+}
+
+#[test]
+fn generate_rolls_back_when_client_public_api_cannot_be_updated() {
+    let root = create_temp_dir("generate-client-public-rollback");
+    assert_eq!(
+        run_boundra(&root, &["create-domain", "billing"])
+            .status
+            .code(),
+        Some(0)
+    );
+    let manifest_path = root.join("domains/billing/domain.json");
+    let shared_public_path = root.join("domains/billing/shared/public.ts");
+    let client_public_path = root.join("domains/billing/client/public.ts");
+    let original_manifest = fs::read(&manifest_path).expect("failed to read manifest");
+    let original_shared_public =
+        fs::read(&shared_public_path).expect("failed to read shared public API");
+
+    fs::remove_file(&client_public_path).expect("failed to remove client public file");
+    fs::create_dir(&client_public_path).expect("failed to create conflicting directory");
+
+    let failed = run_boundra(&root, &["generate", "query", "billing/list-invoices"]);
+    let stderr = String::from_utf8_lossy(&failed.stderr);
+    assert_eq!(failed.status.code(), Some(3));
+    assert!(stderr.contains("[ERROR] GEN-004"));
+    assert!(stderr.contains("file:"));
+    assert!(stderr.contains("client/public.ts"));
+    assert!(!root
+        .join("domains/billing/shared/contracts/list-invoices.ts")
+        .exists());
+    assert!(!root
+        .join("domains/billing/client/queries/list-invoices.ts")
+        .exists());
+    assert_eq!(
+        fs::read(&manifest_path).expect("failed to reread manifest"),
+        original_manifest
+    );
+    assert_eq!(
+        fs::read(&shared_public_path).expect("failed to reread shared public API"),
+        original_shared_public
+    );
+
+    fs::remove_dir(&client_public_path).expect("failed to remove conflicting directory");
+    fs::write(&client_public_path, "export {};\n").expect("failed to restore client public API");
+    let retried = run_boundra(&root, &["generate", "query", "billing/list-invoices"]);
+    assert_eq!(retried.status.code(), Some(0));
+}
+
+#[test]
+fn generate_rejects_unsafe_resource_paths_without_creating_files() {
+    for resource in ["Order/task", "../task", "order/task/extra"] {
+        let root = create_temp_dir("generate-invalid-resource");
+        let output = run_boundra(&root, &["generate", "resource", resource]);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+
+        assert_eq!(output.status.code(), Some(2), "resource: {resource}");
+        assert!(stderr.contains("[ERROR] CLI-001"), "resource: {resource}");
+        assert!(!root.join("domains").exists(), "resource: {resource}");
+    }
 }
 
 #[test]

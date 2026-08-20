@@ -18,9 +18,14 @@ pub struct ScanOptions {
     pub ignore: Vec<String>,
 }
 
+/// Imports and source-file coverage collected during one workspace scan.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ImportScanReport {
+    /// Import statements extracted from all included source files.
     pub imports: Vec<ImportRecord>,
+    /// Workspace-relative paths for every included source file.
+    pub scanned_files: Vec<String>,
+    /// Total number of included source files.
     pub scanned_file_count: usize,
 }
 
@@ -53,6 +58,7 @@ pub fn collect_imports_with_options(
     Ok(collect_imports_with_report(root, options)?.imports)
 }
 
+/// Collect imports and coverage metadata using the configured scan options.
 pub fn collect_imports_with_report(
     root: &Path,
     options: &ScanOptions,
@@ -62,6 +68,7 @@ pub fn collect_imports_with_report(
     let scanned_file_count = files.len();
 
     let mut imports = Vec::new();
+    let mut scanned_files = Vec::with_capacity(scanned_file_count);
     for file in files {
         let content = fs::read_to_string(&file)?;
         let relative = file
@@ -69,6 +76,7 @@ pub fn collect_imports_with_report(
             .unwrap_or(&file)
             .to_string_lossy()
             .replace('\\', "/");
+        scanned_files.push(relative.clone());
         let source_dir = Path::new(&relative)
             .parent()
             .map(|p| p.to_string_lossy().replace('\\', "/"))
@@ -86,6 +94,7 @@ pub fn collect_imports_with_report(
 
     Ok(ImportScanReport {
         imports,
+        scanned_files,
         scanned_file_count,
     })
 }

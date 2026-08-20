@@ -1,5 +1,6 @@
 import type { BoundraTransport } from "./client.js";
 
+/** Configuration for the framework-neutral HTTP transport. */
 export type BoundraHttpTransportOptions = {
   baseUrl: string;
   headers?: Readonly<Record<string, string>>;
@@ -7,6 +8,7 @@ export type BoundraHttpTransportOptions = {
   maxErrorBodyBytes?: number;
 };
 
+/** Structured fields retained for a non-2xx HTTP response. */
 export type BoundraHttpErrorOptions = {
   contract: string;
   status: number;
@@ -17,6 +19,7 @@ export type BoundraHttpErrorOptions = {
   cause?: unknown;
 };
 
+/** A bounded, structured representation of a non-2xx HTTP response. */
 export class BoundraHttpError extends Error {
   readonly contract: string;
   readonly status: number;
@@ -40,7 +43,15 @@ export class BoundraHttpError extends Error {
 }
 
 const DEFAULT_MAX_ERROR_BODY_BYTES = 64 * 1024;
+const EXPOSED_ERROR_HEADERS = new Set([
+  "content-type",
+  "retry-after",
+  "etag",
+  "x-request-id",
+  "x-correlation-id",
+]);
 
+/** Create a transport that posts Boundra contracts to an HTTP endpoint. */
 export function createHttpTransport(
   options: BoundraHttpTransportOptions,
 ): BoundraTransport {
@@ -85,6 +96,7 @@ export function createHttpTransport(
   };
 }
 
+/** Convert a non-2xx response into a structured transport error. */
 async function createHttpError(
   response: Response,
   contract: string,
@@ -92,7 +104,10 @@ async function createHttpError(
 ): Promise<BoundraHttpError> {
   const headers: Record<string, string> = {};
   response.headers.forEach((value, key) => {
-    headers[key] = value;
+    const normalizedKey = key.toLowerCase();
+    if (EXPOSED_ERROR_HEADERS.has(normalizedKey)) {
+      headers[normalizedKey] = value;
+    }
   });
 
   try {
@@ -118,6 +133,7 @@ async function createHttpError(
   }
 }
 
+/** Read at most the configured number of response-body bytes. */
 async function readBoundedBody(
   response: Response,
   maxBytes: number,
@@ -156,6 +172,7 @@ async function readBoundedBody(
   }
 }
 
+/** Parse JSON error bodies without failing when a server sends invalid JSON. */
 function parseErrorBody(text: string, contentType: string | null): unknown {
   if (text.length === 0) {
     return undefined;

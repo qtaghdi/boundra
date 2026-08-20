@@ -76,11 +76,15 @@ compatibility with current manifests. Consumers should prefer the stable
 `shared/public` entrypoint.
 
 Query, mutation, and resource generation also appends the matching adapter to
-`client/public.ts` while preserving existing application exports:
+`client/public.ts` idempotently. An equivalent existing export is not duplicated
+when it uses different quotes, omits a semicolon, or has a trailing comment.
+Existing application exports are preserved:
 
 ```ts
 export * from "./queries/get-order";
 ```
+
+Route generation does not add a client export.
 
 ## 6. Ownership
 

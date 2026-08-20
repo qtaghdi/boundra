@@ -53,6 +53,8 @@ Options:
 Coverage reporting:
 - `paths.domains` is analyzed independently from `paths.apps`.
 - JSON metadata includes `scanned_file_count` and `analyzed_domain_count`.
+  `analyzed_domain_count` counts unique domains that contain at least one source
+  file included by the configured scan, not merely loaded manifests.
 - Text output warns when no source files or no domains were analyzed.
 
 ### 1.3 `graph-domains`
@@ -82,6 +84,8 @@ Side effects:
 - Generated shared contracts are exported from `domains/<domain>/shared/public.ts`.
 - Generated query and mutation adapters are exported idempotently from
   `domains/<domain>/client/public.ts`.
+- Generation restores generated files, the manifest, and public barrels when a
+  public API update fails, so retrying does not encounter partial output.
 - Existing `publicApi.shared` entries are preserved and duplicate entries are not added.
 - Generated contracts contain input/result schemas and inferred types.
 - Generated route files bind a validated server implementation.
