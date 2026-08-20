@@ -235,6 +235,131 @@ fn check_boundaries_accepts_space_separated_json_format() {
     assert_eq!(json["violations"].as_array().map(Vec::len), Some(0));
     assert_eq!(json["meta"]["command"], "check-boundaries");
     assert_eq!(json["meta"]["violation_count"], 0);
+    assert!(json["meta"]["scanned_file_count"]
+        .as_u64()
+        .is_some_and(|count| count > 0));
+    assert_eq!(json["meta"]["analyzed_domain_count"], 2);
+}
+
+#[test]
+fn check_boundaries_warns_when_scan_and_domain_set_are_empty() {
+    let root = create_temp_dir("empty-scan-warning");
+    let init = run_boundra(&root, &["init", "--name", "empty-app"]);
+    assert_eq!(init.status.code(), Some(0));
+
+    let output = run_boundra(&root, &["check-boundaries"]);
+    let stdout = String::from_utf8_lossy(&output.stdout);
+
+    assert_eq!(output.status.code(), Some(0));
+    assert!(stdout.contains("[WARNING] check-boundaries scanned no source files"));
+    assert!(stdout.contains("[WARNING] check-boundaries analyzed no domains"));
+    assert!(stdout.contains("check-boundaries: OK (no violations)"));
+}
+
+#[test]
+fn check_boundaries_does_not_count_fully_ignored_domains_as_analyzed() {
+    let root = create_temp_dir("ignored-domain-coverage");
+    assert_eq!(
+        run_boundra(&root, &["init", "--name", "ignored-domain-app"])
+            .status
+            .code(),
+        Some(0)
+    );
+    assert_eq!(
+        run_boundra(&root, &["create-domain", "scrim"])
+            .status
+            .code(),
+        Some(0)
+    );
+    fs::write(root.join("apps/main.ts"), "export {};\n").expect("failed to write app source");
+
+    let config_path = root.join("boundra.config.json");
+    let mut config: Value =
+        serde_json::from_slice(&fs::read(&config_path).expect("failed to read config"))
+            .expect("config should be JSON");
+    config["checkBoundaries"]["ignore"]
+        .as_array_mut()
+        .expect("ignore should be an array")
+        .push(Value::String("domains/**".to_string()));
+    fs::write(
+        &config_path,
+        format!(
+            "{}\n",
+            serde_json::to_string_pretty(&config).expect("failed to serialize config")
+        ),
+    )
+    .expect("failed to update config");
+
+    let json_output = run_boundra(&root, &["check-boundaries", "--format", "json"]);
+    let json = parse_json_stdout(&json_output);
+    assert_eq!(json_output.status.code(), Some(0));
+    assert_eq!(json["meta"]["scanned_file_count"], 1);
+    assert_eq!(json["meta"]["analyzed_domain_count"], 0);
+
+    let text_output = run_boundra(&root, &["check-boundaries"]);
+    let stdout = String::from_utf8_lossy(&text_output.stdout);
+    assert!(stdout.contains("[WARNING] check-boundaries analyzed no domains"));
+    assert!(!stdout.contains("scanned no source files"));
+}
+
+#[test]
+fn generated_shared_contract_is_valid_when_apps_path_is_workspace_root() {
+    let root = create_temp_dir("root-app-generated-contract");
+    assert_eq!(
+        run_boundra(&root, &["init", "--name", "single-app"])
+            .status
+            .code(),
+        Some(0)
+    );
+    assert_eq!(
+        run_boundra(&root, &["create-domain", "scrim"])
+            .status
+            .code(),
+        Some(0)
+    );
+    assert_eq!(
+        run_boundra(
+            &root,
+            &["generate", "query", "scrim/get-public-participation"],
+        )
+        .status
+        .code(),
+        Some(0)
+    );
+
+    let config_path = root.join("boundra.config.json");
+    let mut config: Value =
+        serde_json::from_slice(&fs::read(&config_path).expect("failed to read config"))
+            .expect("config should be JSON");
+    config["paths"]["apps"] = Value::String(".".to_string());
+    fs::write(
+        &config_path,
+        format!(
+            "{}\n",
+            serde_json::to_string_pretty(&config).expect("failed to serialize config")
+        ),
+    )
+    .expect("failed to update config");
+
+    let generated = run_boundra(&root, &["check-boundaries", "--format", "json"]);
+    let generated_json = parse_json_stdout(&generated);
+    assert_eq!(generated.status.code(), Some(0));
+    assert_eq!(generated_json["meta"]["analyzed_domain_count"], 1);
+    assert!(generated_json["meta"]["scanned_file_count"]
+        .as_u64()
+        .is_some_and(|count| count > 0));
+
+    let contract_path = root.join("domains/scrim/shared/contracts/get-public-participation.ts");
+    let contract = fs::read_to_string(&contract_path).expect("failed to read contract");
+    fs::write(&contract_path, format!("{contract}import \"react\";\n"))
+        .expect("failed to add blocked dependency");
+
+    let blocked = run_boundra(&root, &["check-boundaries", "--format", "json"]);
+    let blocked_json = parse_json_stdout(&blocked);
+    assert_eq!(blocked.status.code(), Some(1));
+    assert_eq!(blocked_json["violations"].as_array().map(Vec::len), Some(1));
+    assert_eq!(blocked_json["violations"][0]["rule"], "BR-003");
+    assert_eq!(blocked_json["violations"][0]["import"], "react");
 }
 
 #[test]
@@ -825,6 +950,14 @@ fn generate_resource_scaffolds_crud_contracts_and_client_api() {
     assert!(client.contains("export const listTasks"));
     assert!(client.contains("BoundraCallOptions"));
     assert!(client.contains("client.query(listTasksQuery, {}, options)"));
+    let client_public = fs::read_to_string(root.join("domains/order/client/public.ts"))
+        .expect("client public API should exist");
+    assert_eq!(
+        client_public
+            .matches("export * from \"./resources/task\";")
+            .count(),
+        1
+    );
 
     let manifest =
         fs::read_to_string(root.join("domains/order/domain.json")).expect("manifest should exist");
@@ -930,6 +1063,15 @@ fn generate_query_and_mutation_scaffold_client_adapters() {
 
     let create_output = run_boundra(&root, &["create-domain", "billing"]);
     assert_eq!(create_output.status.code(), Some(0));
+    fs::write(
+        root.join("domains/billing/client/public.ts"),
+        concat!(
+            "export const existingClientApi = true;\n",
+            "export * from './queries/list-invoices' // predeclared\n",
+            "export * from \"./mutations/pay-invoice\" // predeclared\n",
+        ),
+    )
+    .expect("failed to seed existing client public API");
 
     let query_output = run_boundra(&root, &["generate", "query", "billing/list-invoices"]);
     let mutation_output = run_boundra(&root, &["generate", "mutation", "billing/pay-invoice"]);
@@ -978,6 +1120,12 @@ fn generate_query_and_mutation_scaffold_client_adapters() {
     assert!(query_adapter.contains("client.query(listInvoicesQuery, input, options)"));
     assert!(mutation_adapter.contains("client.mutation(payInvoiceMutation, input, options)"));
 
+    let client_public = fs::read_to_string(root.join("domains/billing/client/public.ts"))
+        .expect("failed to read client public API");
+    assert!(client_public.contains("export const existingClientApi = true;"));
+    assert_eq!(client_public.matches("./queries/list-invoices").count(), 1);
+    assert_eq!(client_public.matches("./mutations/pay-invoice").count(), 1);
+
     let public_api = fs::read_to_string(root.join("domains/billing/shared/public.ts"))
         .expect("failed to read shared public API");
     assert!(public_api.contains("export * from \"./contracts/list-invoices\";"));
@@ -996,6 +1144,65 @@ fn generate_query_and_mutation_scaffold_client_adapters() {
     assert!(shared
         .iter()
         .any(|value| value.as_str() == Some("./shared/contracts/pay-invoice.ts")));
+}
+
+#[test]
+fn generate_rolls_back_when_client_public_api_cannot_be_updated() {
+    let root = create_temp_dir("generate-client-public-rollback");
+    assert_eq!(
+        run_boundra(&root, &["create-domain", "billing"])
+            .status
+            .code(),
+        Some(0)
+    );
+    let manifest_path = root.join("domains/billing/domain.json");
+    let shared_public_path = root.join("domains/billing/shared/public.ts");
+    let client_public_path = root.join("domains/billing/client/public.ts");
+    let original_manifest = fs::read(&manifest_path).expect("failed to read manifest");
+    let original_shared_public =
+        fs::read(&shared_public_path).expect("failed to read shared public API");
+
+    fs::remove_file(&client_public_path).expect("failed to remove client public file");
+    fs::create_dir(&client_public_path).expect("failed to create conflicting directory");
+
+    let failed = run_boundra(&root, &["generate", "query", "billing/list-invoices"]);
+    let stderr = String::from_utf8_lossy(&failed.stderr);
+    assert_eq!(failed.status.code(), Some(3));
+    assert!(stderr.contains("[ERROR] GEN-004"));
+    assert!(stderr.contains("file:"));
+    assert!(stderr.contains("client/public.ts"));
+    assert!(!root
+        .join("domains/billing/shared/contracts/list-invoices.ts")
+        .exists());
+    assert!(!root
+        .join("domains/billing/client/queries/list-invoices.ts")
+        .exists());
+    assert_eq!(
+        fs::read(&manifest_path).expect("failed to reread manifest"),
+        original_manifest
+    );
+    assert_eq!(
+        fs::read(&shared_public_path).expect("failed to reread shared public API"),
+        original_shared_public
+    );
+
+    fs::remove_dir(&client_public_path).expect("failed to remove conflicting directory");
+    fs::write(&client_public_path, "export {};\n").expect("failed to restore client public API");
+    let retried = run_boundra(&root, &["generate", "query", "billing/list-invoices"]);
+    assert_eq!(retried.status.code(), Some(0));
+}
+
+#[test]
+fn generate_rejects_unsafe_resource_paths_without_creating_files() {
+    for resource in ["Order/task", "../task", "order/task/extra"] {
+        let root = create_temp_dir("generate-invalid-resource");
+        let output = run_boundra(&root, &["generate", "resource", resource]);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+
+        assert_eq!(output.status.code(), Some(2), "resource: {resource}");
+        assert!(stderr.contains("[ERROR] CLI-001"), "resource: {resource}");
+        assert!(!root.join("domains").exists(), "resource: {resource}");
+    }
 }
 
 #[test]

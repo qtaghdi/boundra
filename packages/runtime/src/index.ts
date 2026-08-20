@@ -12,7 +12,9 @@ export {
   type BoundraValidationIssue,
 } from "./errors.js";
 export {
+  BoundraHttpError,
   createHttpTransport,
+  type BoundraHttpErrorOptions,
   type BoundraHttpTransportOptions,
 } from "./http.js";
 export {

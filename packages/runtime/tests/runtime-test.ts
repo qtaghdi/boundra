@@ -1,4 +1,5 @@
 import {
+  BoundraHttpError,
   BoundraRuntimeError,
   createBoundraClient,
   createHttpTransport,
@@ -78,12 +79,60 @@ try {
 }
 assert(receivedCustomSignal === abortController.signal, "custom transport should receive call options");
 
-await expectRuntimeError("RUNTIME-003", () =>
+const structuredHttpError = await expectRuntimeError("RUNTIME-003", () =>
   createBoundraClient(createHttpTransport({
     baseUrl: "https://example.test",
-    fetch: async () => new Response("failed", { status: 503 }),
+    fetch: async () => new Response(JSON.stringify({
+      code: "SERVICE_BUSY",
+      message: "retry later",
+    }), {
+      status: 503,
+      statusText: "Service Unavailable",
+      headers: {
+        "content-type": "application/problem+json",
+        "retry-after": "30",
+        "set-cookie": "session=secret",
+        "x-internal-token": "secret",
+      },
+    }),
   })).query(query, { id: "item-http" }),
 );
+assert(
+  structuredHttpError.cause instanceof BoundraHttpError,
+  "RUNTIME-003 should preserve BoundraHttpError as its cause",
+);
+assert(structuredHttpError.cause.status === 503, "HTTP error should expose status");
+assert(
+  structuredHttpError.cause.headers["retry-after"] === "30",
+  "HTTP error should expose response headers",
+);
+assert(
+  structuredHttpError.cause.headers["set-cookie"] === undefined
+    && structuredHttpError.cause.headers["x-internal-token"] === undefined,
+  "HTTP error should omit headers outside the safe allowlist",
+);
+assert(
+  typeof structuredHttpError.cause.body === "object"
+    && structuredHttpError.cause.body !== null
+    && "code" in structuredHttpError.cause.body
+    && structuredHttpError.cause.body.code === "SERVICE_BUSY",
+  "HTTP error should expose parsed JSON body",
+);
+assert(!structuredHttpError.cause.bodyTruncated, "small HTTP body should not be truncated");
+
+const truncatedHttpError = await expectRuntimeError("RUNTIME-003", () =>
+  createBoundraClient(createHttpTransport({
+    baseUrl: "https://example.test",
+    maxErrorBodyBytes: 4,
+    fetch: async () => new Response("failure", {
+      status: 409,
+      headers: { "content-type": "text/plain" },
+    }),
+  })).query(query, { id: "item-http" }),
+);
+assert(truncatedHttpError.cause instanceof BoundraHttpError, "expected bounded HTTP error");
+assert(truncatedHttpError.cause.body === "fail", "text error body should respect byte limit");
+assert(truncatedHttpError.cause.bodyTruncated, "oversized error body should report truncation");
 
 const inputError = await expectRuntimeError("RUNTIME-001", () =>
   client.query(query, { id: "" }),

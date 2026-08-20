@@ -12,6 +12,11 @@
 
 ### BR-003: Shared Purity
 - Rule: `domains/*/shared/**`는 UI/DB/infra runtime 의존 금지
+- Allow: contract 정의에 사용하는 `boundra` runtime과 schema provider 같은
+  pure package dependency
+- Bare package import는 `paths.apps`가 `.`이어도 workspace app 경로로
+  재분류하지 않는다. React, Node runtime, DB처럼 명시적으로 차단된 package는
+  계속 위반이다.
 - Reason: 계약 계층의 순수성 보장
 
 ### BR-004: Cross-Domain Access Policy

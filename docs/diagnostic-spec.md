@@ -54,7 +54,12 @@ When JSON output is requested, failures must remain machine-readable:
 ```
 
 Successful `check-boundaries` JSON and violation fields remain backward
-compatible.
+compatible. Its `meta` object also reports `scanned_file_count` and
+`analyzed_domain_count` so CI can distinguish a clean scan from an empty scan.
+The domain count includes only unique domains with at least one scanned source
+file under `paths.domains`; ignored or absent domain sources do not count.
+Text output emits a warning when either count is zero; zero counts do not change
+the command exit code by themselves.
 
 ## 4. Code Families
 

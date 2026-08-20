@@ -329,10 +329,7 @@ fn is_shared_runtime_dependency(
         return true;
     }
 
-    resolved_target.map_or_else(
-        || is_blocked_workspace_dependency(&normalized_import, context),
-        |path| is_blocked_workspace_dependency(path, context),
-    )
+    resolved_target.is_some_and(|path| is_blocked_workspace_dependency(path, context))
 }
 
 fn is_blocked_external_dependency(import_path: &str) -> bool {
@@ -523,12 +520,20 @@ mod tests {
 
     #[test]
     fn root_app_path_does_not_treat_domain_sources_as_app_runtime() {
-        let imports = vec![ImportRecord {
-            source_file: "domains/auth/shared/public.ts".to_string(),
-            source_dir: "domains/auth/shared".to_string(),
-            line: 1,
-            import_path: "./schema".to_string(),
-        }];
+        let imports = vec![
+            ImportRecord {
+                source_file: "domains/auth/shared/contract.ts".to_string(),
+                source_dir: "domains/auth/shared".to_string(),
+                line: 1,
+                import_path: "boundra".to_string(),
+            },
+            ImportRecord {
+                source_file: "domains/auth/shared/contract.ts".to_string(),
+                source_dir: "domains/auth/shared".to_string(),
+                line: 2,
+                import_path: "zod".to_string(),
+            },
+        ];
         let context = BoundaryContext {
             apps_path: ".".to_string(),
             domains_path: "domains".to_string(),
@@ -539,6 +544,27 @@ mod tests {
 
         let violations = check_boundaries_with_context(&imports, &context);
         assert!(violations.is_empty());
+    }
+
+    #[test]
+    fn root_app_path_still_blocks_explicit_shared_runtime_dependencies() {
+        let imports = vec![ImportRecord {
+            source_file: "domains/auth/shared/contract.ts".to_string(),
+            source_dir: "domains/auth/shared".to_string(),
+            line: 1,
+            import_path: "react".to_string(),
+        }];
+        let context = BoundaryContext {
+            apps_path: ".".to_string(),
+            domains_path: "domains".to_string(),
+            packages_path: "packages".to_string(),
+            domains: BTreeMap::new(),
+            path_aliases: Vec::new(),
+        };
+
+        let violations = check_boundaries_with_context(&imports, &context);
+        assert_eq!(violations.len(), 1);
+        assert_eq!(violations[0].rule, RuleCode::Br003);
     }
 
     #[test]

@@ -86,31 +86,54 @@ pub(crate) fn run(options: &GenerateOptions) -> i32 {
             return if is_conflict { 2 } else { 3 };
         }
     };
+    let mut snapshots = Vec::new();
+    let manifest_path = domain_root.join(&project.config.domain.manifest_file);
     let public_api_path = format!("./shared/contracts/{}.ts", options.name);
-    if let Err(err) = update_domain_manifest_public_api(
-        &domain_root.join(&project.config.domain.manifest_file),
-        &public_api_path,
-    ) {
-        print_error(
-            &CliDiagnostic::new(
-                "GEN-002",
-                format!("failed to update domain manifest: {err}"),
-                "fix the domain manifest and register the generated contract before retrying",
-            )
-            .with_context("domain", &options.domain),
+    if let Err(err) = snapshot_then_update(&mut snapshots, &manifest_path, || {
+        update_domain_manifest_public_api(&manifest_path, &public_api_path)
+    }) {
+        report_generation_update_error(
+            "GEN-002",
+            "domain manifest",
+            &err,
+            "fix the domain manifest and register the generated contract before retrying",
+            options,
+            &manifest_path,
+            rollback_generation(&created, &snapshots),
         );
         return 3;
     }
-    if let Err(err) = update_shared_public_api(&domain_root, &options.name) {
-        print_error(
-            &CliDiagnostic::new(
-                "GEN-003",
-                format!("failed to update shared public API: {err}"),
-                "check shared/public.ts permissions and export the generated contract",
-            )
-            .with_context("domain", &options.domain),
+    let shared_public_path = domain_root.join("shared").join("public.ts");
+    if let Err(err) = snapshot_then_update(&mut snapshots, &shared_public_path, || {
+        update_shared_public_api(&domain_root, &options.name)
+    }) {
+        report_generation_update_error(
+            "GEN-003",
+            "shared public API",
+            &err,
+            "check shared/public.ts permissions and export the generated contract",
+            options,
+            &shared_public_path,
+            rollback_generation(&created, &snapshots),
         );
         return 3;
+    }
+    if let Some(client_export) = generated_client_export(options.kind, &options.name) {
+        let client_public_path = domain_root.join("client").join("public.ts");
+        if let Err(err) = snapshot_then_update(&mut snapshots, &client_public_path, || {
+            update_client_public_api(&domain_root, &client_export)
+        }) {
+            report_generation_update_error(
+                "GEN-004",
+                "client public API",
+                &err,
+                "check client/public.ts permissions and export the generated adapter",
+                options,
+                &client_public_path,
+                rollback_generation(&created, &snapshots),
+            );
+            return 3;
+        }
     }
 
     println!(
@@ -337,17 +360,31 @@ fn ensure_new_files<'a>(paths: impl IntoIterator<Item = &'a Path>) -> std::io::R
 
 fn update_shared_public_api(domain_root: &Path, name: &str) -> std::io::Result<()> {
     let public_path = domain_root.join("shared").join("public.ts");
-    let export_line = format!("export * from \"./contracts/{name}\";\n");
+    append_idempotent_export(&public_path, &format!("./contracts/{name}"))
+}
+
+/// Export one generated client adapter through the stable client barrel.
+fn update_client_public_api(domain_root: &Path, export_path: &str) -> std::io::Result<()> {
+    let public_path = domain_root.join("client").join("public.ts");
+    append_idempotent_export(&public_path, export_path)
+}
+
+/// Append an export unless the same module path is already exported.
+fn append_idempotent_export(public_path: &Path, export_path: &str) -> std::io::Result<()> {
     let existing = if public_path.exists() {
-        fs::read_to_string(&public_path)?
+        fs::read_to_string(public_path)?
     } else {
         String::new()
     };
 
-    if existing.lines().any(|line| line == export_line.trim_end()) {
+    if existing
+        .lines()
+        .any(|line| exported_module_path(line) == Some(export_path))
+    {
         return Ok(());
     }
 
+    let export_line = format!("export * from \"{export_path}\";\n");
     let output = if existing.trim() == "export {};" || existing.trim().is_empty() {
         export_line
     } else {
@@ -358,6 +395,105 @@ fn update_shared_public_api(domain_root: &Path, name: &str) -> std::io::Result<(
         )
     };
     fs::write(public_path, output)
+}
+
+/// Extract the module path from a single `export * from` declaration.
+fn exported_module_path(line: &str) -> Option<&str> {
+    let rest = line.trim_start().strip_prefix("export")?.trim_start();
+    let rest = rest.strip_prefix('*')?.trim_start();
+    let rest = rest.strip_prefix("from")?.trim_start();
+    let quote = rest.chars().next()?;
+    if !matches!(quote, '\'' | '"') {
+        return None;
+    }
+    let quoted = &rest[quote.len_utf8()..];
+    let end = quoted.find(quote)?;
+    Some(&quoted[..end])
+}
+
+#[derive(Debug)]
+struct FileSnapshot {
+    path: PathBuf,
+    contents: Option<Vec<u8>>,
+}
+
+/// Snapshot a file immediately before applying one generation update.
+fn snapshot_then_update(
+    snapshots: &mut Vec<FileSnapshot>,
+    path: &Path,
+    update: impl FnOnce() -> std::io::Result<()>,
+) -> std::io::Result<()> {
+    let contents = if path.exists() {
+        Some(fs::read(path)?)
+    } else {
+        None
+    };
+    snapshots.push(FileSnapshot {
+        path: path.to_path_buf(),
+        contents,
+    });
+    update()
+}
+
+/// Restore updated files and remove artifacts created by the failed command.
+fn rollback_generation(created: &[PathBuf], snapshots: &[FileSnapshot]) -> std::io::Result<()> {
+    let mut first_error = None;
+
+    for snapshot in snapshots.iter().rev() {
+        let result = match &snapshot.contents {
+            Some(contents) => fs::write(&snapshot.path, contents),
+            None if snapshot.path.exists() => fs::remove_file(&snapshot.path),
+            None => Ok(()),
+        };
+        if first_error.is_none() {
+            first_error = result.err();
+        }
+    }
+    for path in created.iter().rev() {
+        if path.exists() {
+            if let Err(err) = fs::remove_file(path) {
+                if first_error.is_none() {
+                    first_error = Some(err);
+                }
+            }
+        }
+    }
+
+    first_error.map_or(Ok(()), Err)
+}
+
+/// Emit a stage-specific generation error and surface rollback failures.
+fn report_generation_update_error(
+    code: &str,
+    target: &str,
+    err: &std::io::Error,
+    suggestion: &str,
+    options: &GenerateOptions,
+    file: &Path,
+    rollback: std::io::Result<()>,
+) {
+    let mut diagnostic = CliDiagnostic::new(
+        code,
+        format!("failed to update {target}: {err}"),
+        suggestion,
+    )
+    .with_context("domain", &options.domain)
+    .with_context("file", display_path(file));
+    if let Err(rollback_error) = rollback {
+        diagnostic = diagnostic.with_context("rollback_error", rollback_error.to_string());
+    }
+    print_error(&diagnostic);
+}
+
+/// Map client-producing generators to their public barrel path.
+fn generated_client_export(kind: GenerateKind, name: &str) -> Option<String> {
+    let directory = match kind {
+        GenerateKind::Query => "queries",
+        GenerateKind::Mutation => "mutations",
+        GenerateKind::Resource => "resources",
+        GenerateKind::Route => return None,
+    };
+    Some(format!("./{directory}/{name}"))
 }
 
 fn write_new_file(path: &Path, content: &str) -> std::io::Result<()> {
