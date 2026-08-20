@@ -6,6 +6,22 @@ The format follows Keep a Changelog and versions follow Semantic Versioning.
 
 ## [Unreleased]
 
+## [0.2.2] - 2026-08-20
+
+### Added
+
+- boundary scan coverage metadata and empty-scan warnings
+- bounded structured HTTP errors with a safe response-header allowlist
+
+### Changed
+
+- avoid BR-003 false positives for generated contract and schema-provider imports
+  when the application root is the workspace root
+- export generated query, mutation, and resource adapters through the client
+  public API without duplicating equivalent exports
+- roll back generated files, manifests, and public barrels when generation cannot
+  complete
+
 ## [0.2.1] - 2026-07-21
 
 ### Added
