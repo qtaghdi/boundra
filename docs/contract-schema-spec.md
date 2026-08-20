@@ -75,6 +75,13 @@ The direct contract path remains in `domain.json` `publicApi.shared` for
 compatibility with current manifests. Consumers should prefer the stable
 `shared/public` entrypoint.
 
+Query, mutation, and resource generation also appends the matching adapter to
+`client/public.ts` while preserving existing application exports:
+
+```ts
+export * from "./queries/get-order";
+```
+
 ## 6. Ownership
 
 - generator owns initial file creation

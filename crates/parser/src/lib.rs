@@ -18,6 +18,12 @@ pub struct ScanOptions {
     pub ignore: Vec<String>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ImportScanReport {
+    pub imports: Vec<ImportRecord>,
+    pub scanned_file_count: usize,
+}
+
 impl Default for ScanOptions {
     fn default() -> Self {
         Self {
@@ -44,8 +50,16 @@ pub fn collect_imports_with_options(
     root: &Path,
     options: &ScanOptions,
 ) -> io::Result<Vec<ImportRecord>> {
+    Ok(collect_imports_with_report(root, options)?.imports)
+}
+
+pub fn collect_imports_with_report(
+    root: &Path,
+    options: &ScanOptions,
+) -> io::Result<ImportScanReport> {
     let mut files = Vec::new();
     collect_ts_like_files(root, root, options, &mut files)?;
+    let scanned_file_count = files.len();
 
     let mut imports = Vec::new();
     for file in files {
@@ -70,7 +84,10 @@ pub fn collect_imports_with_options(
         }
     }
 
-    Ok(imports)
+    Ok(ImportScanReport {
+        imports,
+        scanned_file_count,
+    })
 }
 
 fn extract_imports_from_content(content: &str) -> Vec<(usize, String)> {

@@ -58,6 +58,14 @@ struct ViolationOutput<'a> {
 struct OutputMeta<'a> {
     command: &'a str,
     violation_count: usize,
+    scanned_file_count: usize,
+    analyzed_domain_count: usize,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct BoundaryScanCoverage {
+    pub(crate) scanned_file_count: usize,
+    pub(crate) analyzed_domain_count: usize,
 }
 
 #[derive(Debug, Serialize)]
@@ -93,7 +101,14 @@ pub(crate) fn print_error_json(command: &str, diagnostic: &CliDiagnostic) {
     );
 }
 
-pub(crate) fn print_text(violations: &[Violation]) {
+pub(crate) fn print_text(violations: &[Violation], coverage: BoundaryScanCoverage) {
+    if coverage.scanned_file_count == 0 {
+        println!("[WARNING] check-boundaries scanned no source files");
+    }
+    if coverage.analyzed_domain_count == 0 {
+        println!("[WARNING] check-boundaries analyzed no domains");
+    }
+
     if violations.is_empty() {
         println!("check-boundaries: OK (no violations)");
         return;
@@ -115,7 +130,7 @@ pub(crate) fn print_text(violations: &[Violation]) {
     );
 }
 
-pub(crate) fn print_json(violations: &[Violation]) {
+pub(crate) fn print_json(violations: &[Violation], coverage: BoundaryScanCoverage) {
     let status = if violations.is_empty() {
         "passed"
     } else {
@@ -137,6 +152,8 @@ pub(crate) fn print_json(violations: &[Violation]) {
         meta: OutputMeta {
             command: "check-boundaries",
             violation_count: violations.len(),
+            scanned_file_count: coverage.scanned_file_count,
+            analyzed_domain_count: coverage.analyzed_domain_count,
         },
     };
 

@@ -112,6 +112,19 @@ pub(crate) fn run(options: &GenerateOptions) -> i32 {
         );
         return 3;
     }
+    if let Some(client_export) = generated_client_export(options.kind, &options.name) {
+        if let Err(err) = update_client_public_api(&domain_root, &client_export) {
+            print_error(
+                &CliDiagnostic::new(
+                    "GEN-004",
+                    format!("failed to update client public API: {err}"),
+                    "check client/public.ts permissions and export the generated adapter",
+                )
+                .with_context("domain", &options.domain),
+            );
+            return 3;
+        }
+    }
 
     println!(
         "generate {}: OK ({}/{})",
@@ -338,8 +351,18 @@ fn ensure_new_files<'a>(paths: impl IntoIterator<Item = &'a Path>) -> std::io::R
 fn update_shared_public_api(domain_root: &Path, name: &str) -> std::io::Result<()> {
     let public_path = domain_root.join("shared").join("public.ts");
     let export_line = format!("export * from \"./contracts/{name}\";\n");
+    append_idempotent_export(&public_path, &export_line)
+}
+
+fn update_client_public_api(domain_root: &Path, export_path: &str) -> std::io::Result<()> {
+    let public_path = domain_root.join("client").join("public.ts");
+    let export_line = format!("export * from \"{export_path}\";\n");
+    append_idempotent_export(&public_path, &export_line)
+}
+
+fn append_idempotent_export(public_path: &Path, export_line: &str) -> std::io::Result<()> {
     let existing = if public_path.exists() {
-        fs::read_to_string(&public_path)?
+        fs::read_to_string(public_path)?
     } else {
         String::new()
     };
@@ -349,7 +372,7 @@ fn update_shared_public_api(domain_root: &Path, name: &str) -> std::io::Result<(
     }
 
     let output = if existing.trim() == "export {};" || existing.trim().is_empty() {
-        export_line
+        export_line.to_string()
     } else {
         format!(
             "{}{separator}{export_line}",
@@ -358,6 +381,16 @@ fn update_shared_public_api(domain_root: &Path, name: &str) -> std::io::Result<(
         )
     };
     fs::write(public_path, output)
+}
+
+fn generated_client_export(kind: GenerateKind, name: &str) -> Option<String> {
+    let directory = match kind {
+        GenerateKind::Query => "queries",
+        GenerateKind::Mutation => "mutations",
+        GenerateKind::Resource => "resources",
+        GenerateKind::Route => return None,
+    };
+    Some(format!("./{directory}/{name}"))
 }
 
 fn write_new_file(path: &Path, content: &str) -> std::io::Result<()> {

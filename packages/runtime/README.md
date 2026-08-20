@@ -27,6 +27,7 @@ on a structural `parse(unknown)` contract.
 - `defineRoute`, `defineQuery`, `defineMutation`
 - `createBoundraClient`
 - `createHttpTransport`
+- `BoundraHttpError` with bounded structured non-2xx response details
 - per-call `BoundraCallOptions` with `AbortSignal` propagation
 - `implementRoute`, `implementQuery`, `implementMutation`
 - `executeContract`

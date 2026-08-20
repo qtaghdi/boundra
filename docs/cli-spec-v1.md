@@ -50,6 +50,11 @@ Options:
 - `--root <path>` (default: `.`)
 - `--format text|json` (default: `text`)
 
+Coverage reporting:
+- `paths.domains` is analyzed independently from `paths.apps`.
+- JSON metadata includes `scanned_file_count` and `analyzed_domain_count`.
+- Text output warns when no source files or no domains were analyzed.
+
 ### 1.3 `graph-domains`
 
 Generate a domain dependency graph from domain manifests.
@@ -75,6 +80,8 @@ Options:
 Side effects:
 - Generated shared contract files are appended to `domains/<domain>/domain.json` under `publicApi.shared`.
 - Generated shared contracts are exported from `domains/<domain>/shared/public.ts`.
+- Generated query and mutation adapters are exported idempotently from
+  `domains/<domain>/client/public.ts`.
 - Existing `publicApi.shared` entries are preserved and duplicate entries are not added.
 - Generated contracts contain input/result schemas and inferred types.
 - Generated route files bind a validated server implementation.
@@ -106,8 +113,9 @@ Generated targets:
 - `domains/<domain>/client/resources/<name>.ts`
 
 The shared file owns list/create/update/delete schemas and contracts. The
-client file exposes typed functions. Boundra does not generate persistence,
-HTTP routes, UI, or ORM code.
+client file exposes typed functions and is exported idempotently from
+`client/public.ts`. Boundra does not generate persistence, HTTP routes, UI, or
+ORM code.
 
 ## 2. CLI UX Principles
 
@@ -134,7 +142,9 @@ HTTP routes, UI, or ORM code.
   ],
   "meta": {
     "command": "check-boundaries",
-    "violation_count": 1
+    "violation_count": 1,
+    "scanned_file_count": 24,
+    "analyzed_domain_count": 2
   }
 }
 ```
