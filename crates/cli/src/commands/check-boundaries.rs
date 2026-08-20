@@ -95,9 +95,11 @@ fn count_analyzed_domains<'a>(
         .trim_matches('/')
         .trim_start_matches("./")
         .to_string();
-    let normalized_root = (normalized_root != ".")
-        .then_some(normalized_root)
-        .unwrap_or_default();
+    let normalized_root = if normalized_root == "." {
+        String::new()
+    } else {
+        normalized_root
+    };
     let prefix = (!normalized_root.is_empty()).then(|| format!("{normalized_root}/"));
 
     scanned_files
