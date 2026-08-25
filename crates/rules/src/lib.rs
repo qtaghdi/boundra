@@ -35,12 +35,9 @@ pub fn check_boundaries_with_context(
     let mut violations = Vec::new();
 
     for record in imports {
-        let source = parse_domain_path_with_context(&record.source_file, context);
-        let (source_domain, source_layer) = source
-            .clone()
-            .map_or((String::new(), Layer::Unknown), |(domain, layer)| {
-                (domain, layer)
-            });
+        let (source_domain, source_layer) =
+            parse_domain_path_with_context(&record.source_file, context)
+                .unwrap_or((String::new(), Layer::Unknown));
 
         let resolved_target =
             resolve_import_path_with_context(&record.source_dir, &record.import_path, context);
@@ -67,12 +64,8 @@ pub fn check_boundaries_with_context(
         let Some(target) = resolved_target else {
             continue;
         };
-        let target_parsed = parse_domain_path_with_context(&target, context);
-        let (target_domain, target_layer) = target_parsed
-            .clone()
-            .map_or((String::new(), Layer::Unknown), |(domain, layer)| {
-                (domain, layer)
-            });
+        let (target_domain, target_layer) = parse_domain_path_with_context(&target, context)
+            .unwrap_or((String::new(), Layer::Unknown));
 
         match (source_layer, target_layer) {
             (Layer::Client, Layer::Server) => violations.push(Violation {
