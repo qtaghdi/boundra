@@ -2,6 +2,10 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 
+import {
+  formatBoundraBoundarySummary,
+  formatBoundraRuntimeSummary,
+} from "../src/dev-overlay";
 import { boundra } from "../src/vite";
 
 function assert(condition: unknown, message: string): asserts condition {
@@ -49,6 +53,46 @@ try {
   assert(publishCount === 2, "Svelte updates should rerun boundary checks");
   plugin.handleHotUpdate({ file: join(root, "apps/web/src/theme.css") });
   assert(publishCount === 2, "non-source updates should not rerun boundary checks");
+
+  const runtimeSummary = formatBoundraRuntimeSummary({
+    name: "BoundraRuntimeError",
+    code: "RUNTIME-002",
+    contract: "list-projects",
+    phase: "result",
+    message: "contract result rejected",
+    suggestion: "return contract-ready projects",
+    issues: [
+      { code: "invalid_type", path: ["projects", 0, "id"], message: "expected string" },
+      { code: "too_big", path: ["projects"], message: "too many projects" },
+    ],
+  });
+  assert(runtimeSummary.includes("Boundra runtime diagnostics (2)"), "runtime view should count every issue");
+  assert(runtimeSummary.includes("projects[0].id"), "runtime view should preserve nested paths");
+  assert(runtimeSummary.includes("too many projects"), "runtime view should include later issues");
+
+  const boundarySummary = formatBoundraBoundarySummary({
+    source: "boundary",
+    diagnostics: [
+      {
+        rule: "BR-005",
+        file: "apps/web/src/main.ts",
+        line: 1,
+        import: "@domains/tasks/server/internal/store",
+        message: "app imported a domain internal path",
+        suggestion: "import the domain public API",
+      },
+      {
+        rule: "BR-001",
+        file: "domains/tasks/client/view.ts",
+        line: 4,
+        import: "../server/internal/store",
+        message: "client imported server code",
+        suggestion: "move the contract to shared",
+      },
+    ],
+  });
+  assert(boundarySummary.includes("Boundra boundary diagnostics (2)"), "boundary view should count every violation");
+  assert(boundarySummary.includes("BR-001"), "boundary view should include later violations");
 
   console.log("vite-test: OK");
 } finally {
