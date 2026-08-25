@@ -6,6 +6,22 @@ The format follows Keep a Changelog and versions follow Semantic Versioning.
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-08-25
+
+### Added
+
+- multi-diagnostic navigation for runtime validation issues and boundary
+  violations in the development error view
+- safe diagnostic report copying and boundary file navigation through the Vite
+  development server
+
+### Changed
+
+- preserve runtime diagnostics independently from boundary re-check state
+- support keyboard dismissal, responsive layouts, and accessible diagnostic
+  source navigation
+- keep the Rust rules engine compatible with the latest Clippy lint set
+
 ## [0.2.2] - 2026-08-20
 
 ### Added
