@@ -26,7 +26,7 @@
 - [x] MIT `LICENSE`
 - [x] `SECURITY.md`
 - [x] `CHANGELOG.md`
-- [x] versioned `v0.1.0` through `v0.3.0` release notes
+- [x] versioned `v0.1.0` through `v0.4.0` release notes
 - [x] PR and tag workflows validate the release-note format
 - [x] public quickstart and CLI install guide
 - [x] Node and native target support matrix
@@ -50,6 +50,8 @@
 - [x] create and push the `v0.2.1` tag
 - [x] publish and verify `boundra@0.2.2`
 - [x] create and push the `v0.2.2` tag
+- [x] publish and verify `boundra@0.3.0`
+- [x] create and push the `v0.3.0` tag
 
 No public release should be announced while any unchecked item in Artifact
 Verification, Repository Readiness, or Registry and Release remains.
