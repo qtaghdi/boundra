@@ -6,6 +6,30 @@ The format follows Keep a Changelog and versions follow Semantic Versioning.
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-08-28
+
+### Added
+
+- framework-neutral browser development error view through `boundra/ui`
+- configurable BR-003 capability classification for external dependencies,
+  workspace packages, and application paths
+- configurable shared-layer denied capabilities with backward-compatible defaults
+- fixture-driven parser correctness corpus for exact source, line, and import-path
+  regression coverage
+
+### Changed
+
+- reuse the shared development error view renderer from the Vite adapter
+- support explicit runtime and boundary reporting for Next.js and other browser
+  hosts
+
+### Fixed
+
+- improve Svelte import scanning by masking markup while preserving script blocks
+- detect multiple `require()` and dynamic `import()` calls on the same line
+- reduce import-parser false positives around comments, strings, method-like calls,
+  non-literal imports, escaped paths, and UTF-8 source text
+
 ## [0.3.0] - 2026-08-25
 
 ### Added
