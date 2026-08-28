@@ -29,6 +29,7 @@ TypeScript should own the application-facing API:
 - route/query/mutation adapters
 - client/server helper functions
 - framework integration helpers for apps
+- framework-neutral developer diagnostic rendering
 - developer-facing package entrypoints
 
 TypeScript is the right layer for anything application code imports directly.
@@ -80,6 +81,10 @@ Initial responsibilities:
 - provide a framework-neutral client/transport boundary
 - avoid framework-specific runtime behavior
 - avoid depending on React, Next.js, database clients, or server runtimes
+
+The browser error view follows the same rule: `packages/ui` owns DOM rendering,
+while Vite and host applications own error capture and lifecycle integration.
+It is distributed as `boundra/ui` rather than a second npm package.
 
 Non-goals:
 

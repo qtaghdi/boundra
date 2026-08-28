@@ -28,3 +28,6 @@ During development the plugin:
 The overlay is not injected during production builds. Use `cliPath` only in
 controlled development or tests when the native CLI is not resolved through
 the npm launcher.
+
+The renderer itself is framework-neutral and lives at `boundra/ui`. See
+[`error-view.md`](./error-view.md) for handled-error and Next.js integration.

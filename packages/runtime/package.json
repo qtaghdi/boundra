@@ -33,13 +33,17 @@
       "types": "./dist/dev-overlay.d.ts",
       "import": "./dist/dev-overlay.js"
     },
+    "./ui": {
+      "types": "./dist/ui/index.d.ts",
+      "import": "./dist/ui/index.js"
+    },
     "./vite": {
       "types": "./dist/vite.d.ts",
       "import": "./dist/vite.js"
     }
   },
   "scripts": {
-    "build": "tsc -p tsconfig.build.json",
+    "build": "tsc -p tsconfig.build.json && tsc -p ../ui/tsconfig.build.json",
     "prepack": "npm run build"
   },
   "engines": {
