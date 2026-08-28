@@ -46,7 +46,7 @@ framework repository itself as an application.
 - `server/`: API handlers, business rules, data orchestration
 - `shared/`: schema, DTO, contract, pure utilities
 - `mcp/`: AI adapter layer (tool/resource/prompt)
-- `tests/`: domain 테스트 (unit/integration)
+- `tests/`: 도메인 테스트 (unit/integration)
 
 ## 3. Dependency Direction
 
@@ -85,6 +85,9 @@ framework repository itself as an application.
 - `packages/runtime`: pure TypeScript helper types used by generated contracts
 - `packages/ui`: framework-neutral browser rendering for normalized Boundra
   diagnostics; published through the single `boundra/ui` npm subpath
+- `packages/config`: TypeScript authoring types for the currently supported
+  Boundra project config; published through `boundra/config` while native
+  config discovery remains `boundra.config.json`
 
 ## 7. Expansion Strategy
 

@@ -107,7 +107,11 @@ try {
   await writeFile(
     join(project, "src", "index.ts"),
     `import { createBoundraClient } from "boundra";
+import { defineConfig } from "boundra/config";
 import { getOrderQuery } from "../domains/order/shared/public";
+
+const config = defineConfig({ paths: { domains: "domains" } });
+void config.paths.domains;
 
 const client = createBoundraClient(async () => ({}));
 void client.query(getOrderQuery, {});
@@ -117,6 +121,16 @@ void client.query(getOrderQuery, {});
   run("pnpm", offline ? ["install", "--offline"] : ["install"], {
     cwd: project,
   });
+
+  run(
+    "node",
+    [
+      "--input-type=module",
+      "-e",
+      'import { defineConfig } from "boundra/config"; const config = defineConfig({ paths: { domains: "domains" } }); if (config.paths.domains !== "domains") process.exit(1);',
+    ],
+    { cwd: project },
+  );
 
   run(
     "pnpm",
@@ -163,6 +177,9 @@ void client.query(getOrderQuery, {});
   );
   if (packedPackage.exports?.["."]?.import !== "./dist/index.js") {
     throw new Error("clean-room project did not install the compiled runtime export");
+  }
+  if (packedPackage.exports?.["./config"]?.import !== "./dist/config/index.js") {
+    throw new Error("clean-room project did not install the compiled config export");
   }
 
   console.log("clean-room: OK");

@@ -7,7 +7,8 @@
     "noEmit": true,
     "baseUrl": ".",
     "paths": {
-      "boundra": ["packages/runtime/src/index.ts"]
+      "boundra": ["packages/runtime/src/index.ts"],
+      "boundra/config": ["packages/config/src/index.ts"]
     },
     "skipLibCheck": true
   },
