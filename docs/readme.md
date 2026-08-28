@@ -17,7 +17,8 @@
 11. [packaging-spec.md](packaging-spec.md)
 12. [quickstart.md](quickstart.md)
 13. [cli-install.md](cli-install.md)
-14. [release-checklist.md](release-checklist.md)
+14. [parser-correctness.md](parser-correctness.md)
+15. [release-checklist.md](release-checklist.md)
 
 ## Planning
 

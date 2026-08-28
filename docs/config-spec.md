@@ -18,6 +18,7 @@ The file is optional. When it is missing, Boundra uses built-in defaults.
 - domain root and manifest file name
 - default public API paths for new domains
 - scanner extensions and ignored paths for boundary checks
+- dependency capability classification and shared-layer policy
 
 ## 3. Supported Fields
 
@@ -96,7 +97,25 @@ These defaults are used by `create-domain`.
       "**/build/**",
       "**/coverage/**",
       "**/target/**"
-    ]
+    ],
+    "capabilities": {
+      "external": {
+        "react": ["ui"],
+        "@prisma/client": ["database"],
+        "node:*": ["runtime"]
+      },
+      "packages": {
+        "ui": ["ui"],
+        "db": ["database"],
+        "infra": ["runtime"]
+      },
+      "apps": ["runtime"]
+    },
+    "policy": {
+      "shared": {
+        "denyCapabilities": ["ui", "database", "runtime"]
+      }
+    }
   }
 }
 ```
@@ -105,6 +124,17 @@ Supported:
 
 - `includeExtensions`: file extensions scanned by the parser
 - `ignore`: simple workspace-relative ignore patterns
+- `capabilities.external`: external import matcher to capability list
+- `capabilities.packages`: direct child under `paths.packages` to capability list
+- `capabilities.apps`: capabilities assigned to imports that resolve into `paths.apps`
+- `policy.shared.denyCapabilities`: capabilities that trigger BR-003 from `shared`
+
+External matchers match an exact package and its subpaths. A single trailing
+`*` is supported for prefix families such as `node:*`.
+
+Configured `external` and `packages` entries overlay the built-in defaults.
+Assigning an empty list disables that source's default classification. `apps`
+and `policy.shared.denyCapabilities` replace their respective defaults.
 
 ## 4. Defaults
 
@@ -140,7 +170,36 @@ When no config file is present, Boundra behaves as if the following config exist
       "**/build/**",
       "**/coverage/**",
       "**/target/**"
-    ]
+    ],
+    "capabilities": {
+      "external": {
+        "react": ["ui"],
+        "react-dom": ["ui"],
+        "next": ["ui", "runtime"],
+        "@prisma/client": ["database"],
+        "fs": ["runtime"],
+        "path": ["runtime"],
+        "crypto": ["runtime"],
+        "child_process": ["runtime"],
+        "stream": ["runtime"],
+        "http": ["runtime"],
+        "https": ["runtime"],
+        "os": ["runtime"],
+        "process": ["runtime"],
+        "node:*": ["runtime"]
+      },
+      "packages": {
+        "ui": ["ui"],
+        "db": ["database"],
+        "infra": ["runtime"]
+      },
+      "apps": ["runtime"]
+    },
+    "policy": {
+      "shared": {
+        "denyCapabilities": ["ui", "database", "runtime"]
+      }
+    }
   }
 }
 ```
@@ -153,6 +212,9 @@ When no config file is present, Boundra behaves as if the following config exist
 - public API paths must be relative
 - public API paths must not expose `internal`
 - `checkBoundaries.includeExtensions` must not be empty
+- capability names must not be empty
+- external capability wildcards must be a single trailing `*`
+- workspace capability package keys must be direct child names under `paths.packages`
 
 ## 6. TypeScript Path Aliases
 

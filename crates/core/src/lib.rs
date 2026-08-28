@@ -119,6 +119,25 @@ pub struct PublicApi {
 pub struct CheckBoundariesConfig {
     pub include_extensions: Vec<String>,
     pub ignore: Vec<String>,
+    pub capabilities: CapabilityConfig,
+    pub policy: BoundaryPolicyConfig,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CapabilityConfig {
+    pub external: BTreeMap<String, Vec<String>>,
+    pub packages: BTreeMap<String, Vec<String>>,
+    pub apps: Vec<String>,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct BoundaryPolicyConfig {
+    pub shared: LayerCapabilityPolicy,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct LayerCapabilityPolicy {
+    pub deny_capabilities: Vec<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -153,19 +172,71 @@ impl Default for BoundraConfig {
                 manifest_file: "domain.json".to_string(),
                 public_api: PublicApi::default(),
             },
-            check_boundaries: CheckBoundariesConfig {
-                include_extensions: vec![
-                    "ts".to_string(),
-                    "tsx".to_string(),
-                    "js".to_string(),
-                    "jsx".to_string(),
-                    "svelte".to_string(),
-                ],
-                ignore: DEFAULT_BOUNDARY_IGNORE_PATTERNS
-                    .iter()
-                    .map(|pattern| (*pattern).to_string())
-                    .collect(),
-            },
+            check_boundaries: CheckBoundariesConfig::default(),
+        }
+    }
+}
+
+impl Default for CheckBoundariesConfig {
+    fn default() -> Self {
+        Self {
+            include_extensions: vec![
+                "ts".to_string(),
+                "tsx".to_string(),
+                "js".to_string(),
+                "jsx".to_string(),
+                "svelte".to_string(),
+            ],
+            ignore: DEFAULT_BOUNDARY_IGNORE_PATTERNS
+                .iter()
+                .map(|pattern| (*pattern).to_string())
+                .collect(),
+            capabilities: CapabilityConfig::default(),
+            policy: BoundaryPolicyConfig::default(),
+        }
+    }
+}
+
+impl Default for CapabilityConfig {
+    fn default() -> Self {
+        Self {
+            external: BTreeMap::from([
+                ("react".to_string(), vec!["ui".to_string()]),
+                ("react-dom".to_string(), vec!["ui".to_string()]),
+                (
+                    "next".to_string(),
+                    vec!["ui".to_string(), "runtime".to_string()],
+                ),
+                ("@prisma/client".to_string(), vec!["database".to_string()]),
+                ("fs".to_string(), vec!["runtime".to_string()]),
+                ("path".to_string(), vec!["runtime".to_string()]),
+                ("crypto".to_string(), vec!["runtime".to_string()]),
+                ("child_process".to_string(), vec!["runtime".to_string()]),
+                ("stream".to_string(), vec!["runtime".to_string()]),
+                ("http".to_string(), vec!["runtime".to_string()]),
+                ("https".to_string(), vec!["runtime".to_string()]),
+                ("os".to_string(), vec!["runtime".to_string()]),
+                ("process".to_string(), vec!["runtime".to_string()]),
+                ("node:*".to_string(), vec!["runtime".to_string()]),
+            ]),
+            packages: BTreeMap::from([
+                ("ui".to_string(), vec!["ui".to_string()]),
+                ("db".to_string(), vec!["database".to_string()]),
+                ("infra".to_string(), vec!["runtime".to_string()]),
+            ]),
+            apps: vec!["runtime".to_string()],
+        }
+    }
+}
+
+impl Default for LayerCapabilityPolicy {
+    fn default() -> Self {
+        Self {
+            deny_capabilities: vec![
+                "ui".to_string(),
+                "database".to_string(),
+                "runtime".to_string(),
+            ],
         }
     }
 }
@@ -232,6 +303,12 @@ fn validate_config(root: &Path, config: &BoundraConfig) -> io::Result<()> {
         return invalid_data("checkBoundaries.includeExtensions must not be empty");
     }
 
+    validate_capability_config(&config.check_boundaries.capabilities)?;
+    validate_capability_names(
+        "checkBoundaries.policy.shared.denyCapabilities",
+        &config.check_boundaries.policy.shared.deny_capabilities,
+    )?;
+
     Ok(())
 }
 
@@ -241,6 +318,48 @@ fn validate_relative_path(field: &str, value: &str) -> io::Result<()> {
     }
     if Path::new(value).is_absolute() {
         return invalid_data(format!("{field} must be relative"));
+    }
+    Ok(())
+}
+
+fn validate_capability_config(config: &CapabilityConfig) -> io::Result<()> {
+    for (source, capabilities) in &config.external {
+        if source.trim().is_empty() {
+            return invalid_data("checkBoundaries.capabilities.external keys must not be empty");
+        }
+        let wildcard_count = source.chars().filter(|value| *value == '*').count();
+        if wildcard_count > 0 && (wildcard_count != 1 || !source.ends_with('*')) {
+            return invalid_data(format!(
+                "external capability matcher must use at most one trailing '*': {source}"
+            ));
+        }
+        validate_capability_names(
+            &format!("checkBoundaries.capabilities.external.{source}"),
+            capabilities,
+        )?;
+    }
+
+    for (package, capabilities) in &config.packages {
+        if package.trim().is_empty() || package.contains('/') || package.contains('\\') {
+            return invalid_data(format!(
+                "workspace capability package must be a direct package name: {package}"
+            ));
+        }
+        validate_capability_names(
+            &format!("checkBoundaries.capabilities.packages.{package}"),
+            capabilities,
+        )?;
+    }
+
+    validate_capability_names("checkBoundaries.capabilities.apps", &config.apps)
+}
+
+fn validate_capability_names(field: &str, capabilities: &[String]) -> io::Result<()> {
+    if capabilities
+        .iter()
+        .any(|capability| capability.trim().is_empty())
+    {
+        return invalid_data(format!("{field} must not contain empty capability names"));
     }
     Ok(())
 }
@@ -676,6 +795,32 @@ impl RawBoundraConfig {
             if let Some(ignore) = check_boundaries.ignore {
                 config.check_boundaries.ignore = ignore;
             }
+            if let Some(capabilities) = check_boundaries.capabilities {
+                if let Some(external) = capabilities.external {
+                    config
+                        .check_boundaries
+                        .capabilities
+                        .external
+                        .extend(external);
+                }
+                if let Some(packages) = capabilities.packages {
+                    config
+                        .check_boundaries
+                        .capabilities
+                        .packages
+                        .extend(packages);
+                }
+                if let Some(apps) = capabilities.apps {
+                    config.check_boundaries.capabilities.apps = apps;
+                }
+            }
+            if let Some(policy) = check_boundaries.policy {
+                if let Some(shared) = policy.shared {
+                    if let Some(deny_capabilities) = shared.deny_capabilities {
+                        config.check_boundaries.policy.shared.deny_capabilities = deny_capabilities;
+                    }
+                }
+            }
         }
 
         config
@@ -708,6 +853,26 @@ struct RawDomainDefaults {
 struct RawCheckBoundariesConfig {
     include_extensions: Option<Vec<String>>,
     ignore: Option<Vec<String>>,
+    capabilities: Option<RawCapabilityConfig>,
+    policy: Option<RawBoundaryPolicyConfig>,
+}
+
+#[derive(Debug, Default, Deserialize)]
+struct RawCapabilityConfig {
+    external: Option<BTreeMap<String, Vec<String>>>,
+    packages: Option<BTreeMap<String, Vec<String>>>,
+    apps: Option<Vec<String>>,
+}
+
+#[derive(Debug, Default, Deserialize)]
+struct RawBoundaryPolicyConfig {
+    shared: Option<RawLayerCapabilityPolicy>,
+}
+
+#[derive(Debug, Default, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct RawLayerCapabilityPolicy {
+    deny_capabilities: Option<Vec<String>>,
 }
 
 #[derive(Debug, Default, Deserialize)]

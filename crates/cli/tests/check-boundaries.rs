@@ -4,7 +4,7 @@ use std::process::{Command, Output};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use boundra_core::DEFAULT_BOUNDARY_IGNORE_PATTERNS;
-use serde_json::Value;
+use serde_json::{json, Value};
 
 fn run_boundra(root: &Path, args: &[&str]) -> Output {
     Command::new(env!("CARGO_BIN_EXE_boundra"))
@@ -360,6 +360,66 @@ fn generated_shared_contract_is_valid_when_apps_path_is_workspace_root() {
     assert_eq!(blocked_json["violations"].as_array().map(Vec::len), Some(1));
     assert_eq!(blocked_json["violations"][0]["rule"], "BR-003");
     assert_eq!(blocked_json["violations"][0]["import"], "react");
+}
+
+#[test]
+fn check_boundaries_applies_configured_br_003_capabilities_and_policy() {
+    let root = create_temp_dir("configurable-br-003");
+    assert_eq!(
+        run_boundra(&root, &["init", "--name", "configurable-policy-app"])
+            .status
+            .code(),
+        Some(0)
+    );
+    assert_eq!(
+        run_boundra(&root, &["create-domain", "auth"]).status.code(),
+        Some(0)
+    );
+
+    fs::write(
+        root.join("domains/auth/shared/public.ts"),
+        "import \"drizzle-orm\";\nexport {};\n",
+    )
+    .expect("failed to write custom capability fixture");
+
+    let config_path = root.join("boundra.config.json");
+    let mut config: Value =
+        serde_json::from_slice(&fs::read(&config_path).expect("failed to read config"))
+            .expect("config should be JSON");
+    config["checkBoundaries"]["capabilities"] = json!({
+        "external": { "drizzle-orm": ["database"] }
+    });
+    fs::write(
+        &config_path,
+        format!(
+            "{}\n",
+            serde_json::to_string_pretty(&config).expect("failed to serialize config")
+        ),
+    )
+    .expect("failed to update config");
+
+    let blocked = run_boundra(&root, &["check-boundaries", "--format", "json"]);
+    let blocked_json = parse_json_stdout(&blocked);
+    assert_eq!(blocked.status.code(), Some(1));
+    assert_eq!(blocked_json["violations"][0]["rule"], "BR-003");
+    assert_eq!(blocked_json["violations"][0]["import"], "drizzle-orm");
+
+    config["checkBoundaries"]["policy"] = json!({
+        "shared": { "denyCapabilities": ["ui", "runtime"] }
+    });
+    fs::write(
+        &config_path,
+        format!(
+            "{}\n",
+            serde_json::to_string_pretty(&config).expect("failed to serialize config")
+        ),
+    )
+    .expect("failed to relax shared policy");
+
+    let allowed = run_boundra(&root, &["check-boundaries", "--format", "json"]);
+    let allowed_json = parse_json_stdout(&allowed);
+    assert_eq!(allowed.status.code(), Some(0));
+    assert_eq!(allowed_json["violations"].as_array().map(Vec::len), Some(0));
 }
 
 #[test]
