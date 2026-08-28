@@ -4,7 +4,7 @@ version = 4
 
 [[package]]
 name = "boundra-cli"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "boundra-core",
  "boundra-parser",
@@ -15,7 +15,7 @@ dependencies = [
 
 [[package]]
 name = "boundra-core"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "jsonc-parser",
  "serde",
@@ -24,14 +24,14 @@ dependencies = [
 
 [[package]]
 name = "boundra-parser"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "boundra-core",
 ]
 
 [[package]]
 name = "boundra-rules"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "boundra-core",
  "boundra-parser",
