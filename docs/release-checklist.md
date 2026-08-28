@@ -54,6 +54,18 @@
 - [x] create and push the `v0.3.0` tag
 - [x] publish and verify `boundra@0.4.0`
 - [x] create and push the `v0.4.0` tag
+- [x] publish and verify `boundra@0.5.0`
+- [x] create and push the `v0.5.0` tag
+
+## Release Trigger
+
+After the release preparation commit is merged, push the version tag and let
+the tag workflow publish npm, CLI archives, checksums, and the GitHub Release.
+Do not create the GitHub Release manually before pushing the tag.
+
+If a Release for the tag already exists, the workflow updates its title and
+notes and uploads the generated assets with replacement enabled. This makes the
+GitHub Release step safe to retry after a partial publication.
 
 No public release should be announced while any unchecked item in Artifact
 Verification, Repository Readiness, or Registry and Release remains.
