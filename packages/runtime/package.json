@@ -1,6 +1,6 @@
 {
   "name": "boundra",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Schema-backed runtime contracts for Boundra applications",
   "type": "module",
   "license": "MIT",
