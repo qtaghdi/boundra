@@ -6,6 +6,24 @@ The format follows Keep a Changelog and versions follow Semantic Versioning.
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-08-28
+
+### Added
+
+- public `boundra/config` package subpath for typed configuration authoring
+- `BoundraConfig` TypeScript types aligned with configuration fields currently
+  consumed by the Rust project model
+- `defineConfig()` identity helper with literal inference preservation
+- dedicated config type/runtime tests and clean-room verification of the packed
+  `boundra/config` named export
+- configuration authoring documentation
+
+### Changed
+
+- include the config TypeScript surface in the published `boundra` package build
+- document `packages/config` as the framework-neutral configuration authoring
+  surface while keeping native CLI discovery on `boundra.config.json`
+
 ## [0.4.0] - 2026-08-28
 
 ### Added
