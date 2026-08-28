@@ -142,7 +142,14 @@ jobs:
         run: |
           version="${GITHUB_REF_NAME#v}"
           notes_file="docs/releases/v${version//./-}.md"
-          gh release create "$GITHUB_REF_NAME" release/* \
-            --verify-tag \
-            --title "Boundra $GITHUB_REF_NAME" \
-            --notes-file "$notes_file"
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release edit "$GITHUB_REF_NAME" \
+              --title "Boundra $GITHUB_REF_NAME" \
+              --notes-file "$notes_file"
+            gh release upload "$GITHUB_REF_NAME" release/* --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" release/* \
+              --verify-tag \
+              --title "Boundra $GITHUB_REF_NAME" \
+              --notes-file "$notes_file"
+          fi
