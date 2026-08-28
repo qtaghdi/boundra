@@ -33,7 +33,7 @@ apps/web  ───────▶ domains/order/client/public
 | 문제 | Boundra가 제공하는 것 |
 | --- | --- |
 | client/server 코드가 서로 침범함 | BR-001/002로 실행 환경 경계 차단 |
-| shared가 UI·DB에 오염됨 | BR-003으로 계약 계층 순수성 보장 |
+| shared가 UI·DB에 오염됨 | BR-003 capability policy로 계약 계층 순수성 보장 |
 | 다른 도메인의 내부 구현을 직접 참조함 | BR-004로 public API만 허용 |
 | 앱이 도메인 내부 경로를 우회함 | BR-005로 composition root까지 보호 |
 | manifest에 없는 숨은 도메인 결합이 생김 | BR-006과 순환 검사로 dependency graph 보호 |
@@ -102,7 +102,7 @@ pnpm exec boundra graph-domains --format mermaid
 | --- | --- |
 | `BR-001` | `client → server` |
 | `BR-002` | `server → client` |
-| `BR-003` | `shared → UI / DB / runtime infra` |
+| `BR-003` | `shared → policy-denied capability` (기본 UI / DB / runtime) |
 | `BR-004` | `domain → other domain internal` |
 | `BR-005` | `app → domain internal` |
 | `BR-006` | `domain → undeclared domain public API` |

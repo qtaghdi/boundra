@@ -32,6 +32,7 @@ on a structural `parse(unknown)` contract.
 - `implementRoute`, `implementQuery`, `implementMutation`
 - `executeContract`
 - `BoundraRuntimeError`
+- `createBoundraErrorView` from `boundra/ui`
 
 Validation failures include provider-neutral field issues:
 
@@ -59,4 +60,5 @@ The signal reaches custom transports and `createHttpTransport`. If the request
 is intentionally aborted, the original cancellation error is preserved.
 
 See the repository documentation for CLI installation, contract generation,
-and host integration.
+and host integration. Browser error view examples for Vite, Next.js, and
+handled errors are documented in `docs/error-view.md`.

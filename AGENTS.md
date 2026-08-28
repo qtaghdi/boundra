@@ -58,7 +58,7 @@ crates/
 절대 규칙:
 - `client -> server` import 금지 (BR-001)
 - `server -> client` import 금지 (BR-002)
-- `shared -> UI/DB/infra runtime` 의존 금지 (BR-003)
+- `shared -> policy-denied capability` 의존 금지 (BR-003, 기본 UI/DB/runtime)
 - 도메인 간 내부 경로 직접 import 금지, public API만 허용 (BR-004)
 - 앱에서 도메인 내부 경로 직접 import 금지, public API만 허용 (BR-005)
 

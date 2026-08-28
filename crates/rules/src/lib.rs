@@ -1,6 +1,8 @@
 use std::collections::BTreeMap;
 
-use boundra_core::{DomainManifest, Layer, PathAlias, PublicApi, RuleCode, Violation};
+use boundra_core::{
+    CheckBoundariesConfig, DomainManifest, Layer, PathAlias, PublicApi, RuleCode, Violation,
+};
 use boundra_parser::ImportRecord;
 
 pub fn check_boundaries(imports: &[ImportRecord]) -> Vec<Violation> {
@@ -32,6 +34,14 @@ pub fn check_boundaries_with_context(
     imports: &[ImportRecord],
     context: &BoundaryContext,
 ) -> Vec<Violation> {
+    check_boundaries_with_config(imports, context, &CheckBoundariesConfig::default())
+}
+
+pub fn check_boundaries_with_config(
+    imports: &[ImportRecord],
+    context: &BoundaryContext,
+    config: &CheckBoundariesConfig,
+) -> Vec<Violation> {
     let mut violations = Vec::new();
 
     for record in imports {
@@ -43,10 +53,11 @@ pub fn check_boundaries_with_context(
             resolve_import_path_with_context(&record.source_dir, &record.import_path, context);
 
         if source_layer == Layer::Shared
-            && is_shared_runtime_dependency(
+            && has_denied_shared_capability(
                 &record.import_path,
                 resolved_target.as_deref(),
                 context,
+                config,
             )
         {
             violations.push(Violation {
@@ -54,10 +65,11 @@ pub fn check_boundaries_with_context(
                 file: record.source_file.clone(),
                 line: record.line,
                 import_path: record.import_path.clone(),
-                message: "shared layer cannot depend on UI, DB, or runtime infrastructure"
+                message: "shared layer cannot depend on a capability denied by boundary policy"
                     .to_string(),
-                suggestion: "move runtime code to client/server and keep shared as pure contracts"
-                    .to_string(),
+                suggestion:
+                    "move the dependency to client/server or adjust the shared capability policy"
+                        .to_string(),
             });
         }
 
@@ -311,47 +323,74 @@ fn is_within_path(path: &str, root: &str) -> bool {
         || normalized_path.starts_with(&format!("{normalized_root}/"))
 }
 
-fn is_shared_runtime_dependency(
+fn has_denied_shared_capability(
     import_path: &str,
     resolved_target: Option<&str>,
     context: &BoundaryContext,
+    config: &CheckBoundariesConfig,
 ) -> bool {
-    let normalized_import = normalize_path(import_path);
+    let denied = &config.policy.shared.deny_capabilities;
+    if denied.is_empty() {
+        return false;
+    }
 
-    if is_blocked_external_dependency(&normalized_import) {
+    if config
+        .capabilities
+        .external
+        .iter()
+        .any(|(source, capabilities)| {
+            matches_external_capability_source(import_path, source)
+                && contains_denied_capability(capabilities, denied)
+        })
+    {
         return true;
     }
 
-    resolved_target.is_some_and(|path| is_blocked_workspace_dependency(path, context))
+    let Some(target) = resolved_target else {
+        return false;
+    };
+
+    if let Some(package) = workspace_package_name(target, &context.packages_path) {
+        if config
+            .capabilities
+            .packages
+            .get(&package)
+            .is_some_and(|capabilities| contains_denied_capability(capabilities, denied))
+        {
+            return true;
+        }
+    }
+
+    is_workspace_app_path(target, context)
+        && contains_denied_capability(&config.capabilities.apps, denied)
 }
 
-fn is_blocked_external_dependency(import_path: &str) -> bool {
-    let root = import_path.split('/').next().unwrap_or(import_path);
-
-    matches!(
-        root,
-        "react"
-            | "react-dom"
-            | "next"
-            | "fs"
-            | "path"
-            | "crypto"
-            | "child_process"
-            | "stream"
-            | "http"
-            | "https"
-            | "os"
-            | "process"
-    ) || import_path == "@prisma/client"
-        || import_path.starts_with("@prisma/client/")
-        || import_path.starts_with("node:")
-}
-
-fn is_blocked_workspace_dependency(path: &str, context: &BoundaryContext) -> bool {
-    ["ui", "db", "infra"]
+fn contains_denied_capability(capabilities: &[String], denied: &[String]) -> bool {
+    capabilities
         .iter()
-        .any(|package| is_within_path(path, &format!("{}/{package}", context.packages_path)))
-        || is_workspace_app_path(path, context)
+        .any(|capability| denied.iter().any(|blocked| blocked == capability))
+}
+
+fn matches_external_capability_source(import_path: &str, source: &str) -> bool {
+    let normalized_import = import_path.replace('\\', "/");
+    if let Some(prefix) = source.strip_suffix('*') {
+        return normalized_import.starts_with(prefix);
+    }
+    normalized_import == source || normalized_import.starts_with(&format!("{source}/"))
+}
+
+fn workspace_package_name(path: &str, packages_path: &str) -> Option<String> {
+    let normalized_path = normalize_path(path);
+    let normalized_root = normalize_path(packages_path)
+        .trim_end_matches('/')
+        .to_string();
+    let relative = if normalized_root.is_empty() {
+        normalized_path.as_str()
+    } else {
+        normalized_path.strip_prefix(&format!("{normalized_root}/"))?
+    };
+    let package = relative.split('/').next()?;
+    (!package.is_empty()).then(|| package.to_string())
 }
 
 fn is_workspace_app_path(path: &str, context: &BoundaryContext) -> bool {
@@ -412,7 +451,7 @@ fn normalize_path(input: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use boundra_core::{DomainManifest, PublicApi};
+    use boundra_core::{CheckBoundariesConfig, DomainManifest, PublicApi};
     use boundra_parser::ImportRecord;
 
     #[test]
@@ -495,6 +534,82 @@ mod tests {
         }];
 
         let violations = check_boundaries(&imports);
+        assert!(violations.is_empty());
+    }
+
+    #[test]
+    fn configurable_br_003_blocks_custom_external_capability() {
+        let imports = vec![ImportRecord {
+            source_file: "domains/auth/shared/public.ts".to_string(),
+            source_dir: "domains/auth/shared".to_string(),
+            line: 1,
+            import_path: "drizzle-orm".to_string(),
+        }];
+        let mut config = CheckBoundariesConfig::default();
+        config
+            .capabilities
+            .external
+            .insert("drizzle-orm".to_string(), vec!["database".to_string()]);
+
+        let violations =
+            check_boundaries_with_config(&imports, &BoundaryContext::default(), &config);
+        assert_eq!(violations.len(), 1);
+        assert_eq!(violations[0].rule, RuleCode::Br003);
+    }
+
+    #[test]
+    fn configurable_br_003_blocks_custom_workspace_package_capability() {
+        let imports = vec![ImportRecord {
+            source_file: "domains/auth/shared/public.ts".to_string(),
+            source_dir: "domains/auth/shared".to_string(),
+            line: 1,
+            import_path: "../../../packages/persistence/client".to_string(),
+        }];
+        let mut config = CheckBoundariesConfig::default();
+        config
+            .capabilities
+            .packages
+            .insert("persistence".to_string(), vec!["database".to_string()]);
+
+        let violations =
+            check_boundaries_with_config(&imports, &BoundaryContext::default(), &config);
+        assert_eq!(violations.len(), 1);
+        assert_eq!(violations[0].rule, RuleCode::Br003);
+    }
+
+    #[test]
+    fn configurable_br_003_can_relax_shared_policy() {
+        let imports = vec![ImportRecord {
+            source_file: "domains/auth/shared/public.ts".to_string(),
+            source_dir: "domains/auth/shared".to_string(),
+            line: 1,
+            import_path: "react".to_string(),
+        }];
+        let mut config = CheckBoundariesConfig::default();
+        config.policy.shared.deny_capabilities =
+            vec!["database".to_string(), "runtime".to_string()];
+
+        let violations =
+            check_boundaries_with_config(&imports, &BoundaryContext::default(), &config);
+        assert!(violations.is_empty());
+    }
+
+    #[test]
+    fn configurable_br_003_can_disable_a_default_source() {
+        let imports = vec![ImportRecord {
+            source_file: "domains/auth/shared/public.ts".to_string(),
+            source_dir: "domains/auth/shared".to_string(),
+            line: 1,
+            import_path: "react".to_string(),
+        }];
+        let mut config = CheckBoundariesConfig::default();
+        config
+            .capabilities
+            .external
+            .insert("react".to_string(), Vec::new());
+
+        let violations =
+            check_boundaries_with_config(&imports, &BoundaryContext::default(), &config);
         assert!(violations.is_empty());
     }
 

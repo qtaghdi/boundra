@@ -1,0 +1,25 @@
+# file	line	import
+calls.ts	1	./required
+calls.ts	2	./lazy
+calls.ts	3	./template
+calls.ts	6	./first
+calls.ts	6	./second
+calls.ts	7	./lazy-a
+calls.ts	7	./lazy-b
+calls.ts	12	./json
+calls.ts	14	./multiline-lazy
+calls.ts	17	./multiline-required
+component.svelte	2	./server
+component.svelte	6	./browser
+component.svelte	7	./feature
+static.ts	1	./default
+static.ts	2	./named
+static.ts	3	./types
+static.ts	4	./side-effect
+static.ts	5	./exported
+static.ts	6	./contract
+static.ts	7	./star
+static.ts	8	./namespace
+static.ts	9	./json
+static.ts	10	./도메인
+static.ts	12	./multiline

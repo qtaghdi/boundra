@@ -10,6 +10,7 @@ target/
 
 # OS
 .DS_Store
+.idea/
 
 # Env
 .env

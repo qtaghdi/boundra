@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
@@ -82,7 +83,8 @@ pub fn collect_imports_with_report(
             .map(|p| p.to_string_lossy().replace('\\', "/"))
             .unwrap_or_default();
 
-        for (line, import_path) in extract_imports_from_content(&content) {
+        let scan_content = source_for_import_scan(&relative, &content);
+        for (line, import_path) in extract_imports_from_content(&scan_content) {
             imports.push(ImportRecord {
                 source_file: relative.clone(),
                 source_dir: source_dir.clone(),
@@ -97,6 +99,55 @@ pub fn collect_imports_with_report(
         scanned_files,
         scanned_file_count,
     })
+}
+
+fn source_for_import_scan<'a>(path: &str, content: &'a str) -> Cow<'a, str> {
+    if Path::new(path).extension().and_then(|value| value.to_str()) == Some("svelte") {
+        Cow::Owned(mask_svelte_markup(content))
+    } else {
+        Cow::Borrowed(content)
+    }
+}
+
+fn mask_svelte_markup(content: &str) -> String {
+    let mut masked = content
+        .as_bytes()
+        .iter()
+        .map(|byte| if *byte == b'\n' { b'\n' } else { b' ' })
+        .collect::<Vec<_>>();
+    let mut cursor = 0;
+
+    while let Some(open) = find_svelte_script_open(content, cursor) {
+        let Some(tag_end_offset) = content[open..].find('>') else {
+            break;
+        };
+        let body_start = open + tag_end_offset + 1;
+        let Some(close_offset) = content[body_start..].find("</script>") else {
+            masked[body_start..].copy_from_slice(&content.as_bytes()[body_start..]);
+            break;
+        };
+        let body_end = body_start + close_offset;
+        masked[body_start..body_end].copy_from_slice(&content.as_bytes()[body_start..body_end]);
+        cursor = body_end + "</script>".len();
+    }
+
+    String::from_utf8(masked).expect("masking valid UTF-8 must preserve valid UTF-8")
+}
+
+fn find_svelte_script_open(content: &str, from: usize) -> Option<usize> {
+    let mut cursor = from;
+    loop {
+        let offset = content[cursor..].find("<script")?;
+        let index = cursor + offset;
+        let next = content.as_bytes().get(index + "<script".len()).copied();
+        if next.is_none()
+            || next == Some(b'>')
+            || next.is_some_and(|byte| byte.is_ascii_whitespace())
+        {
+            return Some(index);
+        }
+        cursor = index + "<script".len();
+    }
 }
 
 fn extract_imports_from_content(content: &str) -> Vec<(usize, String)> {
@@ -137,10 +188,9 @@ fn extract_imports_from_content(content: &str) -> Vec<(usize, String)> {
         }
 
         // CommonJS require도 boundary 위반을 만들 수 있어서 import처럼 수집한다.
-        if contains_code_call(trimmed, "require(") {
-            if let Some(import_path) = extract_require_path(trimmed) {
-                imports.push((line_number, import_path));
-            } else if call_may_continue(trimmed, "require(") {
+        let require_paths = extract_call_paths(trimmed, "require(");
+        if require_paths.is_empty() {
+            if call_may_continue(trimmed, "require(") {
                 pending_statement = Some(PendingStatement::new(
                     line_number,
                     trimmed.to_string(),
@@ -148,19 +198,30 @@ fn extract_imports_from_content(content: &str) -> Vec<(usize, String)> {
                 ));
                 continue;
             }
+        } else {
+            imports.extend(
+                require_paths
+                    .into_iter()
+                    .map(|import_path| (line_number, import_path)),
+            );
         }
 
         // dynamic import('../x')도 client/server 경계를 우회할 수 있으므로 검사 대상이다.
-        if contains_code_call(trimmed, "import(") {
-            if let Some(import_path) = extract_dynamic_import_path(trimmed) {
-                imports.push((line_number, import_path));
-            } else if call_may_continue(trimmed, "import(") {
+        let dynamic_import_paths = extract_call_paths(trimmed, "import(");
+        if dynamic_import_paths.is_empty() {
+            if call_may_continue(trimmed, "import(") {
                 pending_statement = Some(PendingStatement::new(
                     line_number,
                     trimmed.to_string(),
                     PendingStatementKind::DynamicImportCall,
                 ));
             }
+        } else {
+            imports.extend(
+                dynamic_import_paths
+                    .into_iter()
+                    .map(|import_path| (line_number, import_path)),
+            );
         }
     }
 
@@ -233,17 +294,28 @@ fn extract_dynamic_import_path(line: &str) -> Option<String> {
 }
 
 fn extract_path_after_call(line: &str, needle: &str) -> Option<String> {
-    let index = find_code_needle(line, needle)?;
-    let rest = &line[index + needle.len()..];
-    let (quote, path) = extract_first_quoted_with_delimiter(rest)?;
-    if quote == '`' && path.contains("${") {
-        return None;
-    }
-    Some(path)
+    extract_call_paths(line, needle).into_iter().next()
 }
 
-fn contains_code_call(line: &str, needle: &str) -> bool {
-    find_code_needle(line, needle).is_some()
+fn extract_call_paths(line: &str, needle: &str) -> Vec<String> {
+    let mut paths = Vec::new();
+    let mut offset = 0;
+
+    while offset < line.len() {
+        let Some(relative_index) = find_code_needle(&line[offset..], needle) else {
+            break;
+        };
+        let index = offset + relative_index;
+        let rest = &line[index + needle.len()..];
+        if let Some((quote, path)) = extract_leading_quoted_with_delimiter(rest) {
+            if quote != '`' || !path.contains("${") {
+                paths.push(path);
+            }
+        }
+        offset = index + needle.len();
+    }
+
+    paths
 }
 
 fn call_may_continue(line: &str, needle: &str) -> bool {
@@ -278,7 +350,7 @@ fn find_code_needle(line: &str, needle: &str) -> Option<usize> {
             index += 1;
             continue;
         }
-        if bytes[index..].starts_with(needle.as_bytes()) {
+        if bytes[index..].starts_with(needle.as_bytes()) && is_call_boundary(bytes, index) {
             return Some(index);
         }
         index += 1;
@@ -287,9 +359,20 @@ fn find_code_needle(line: &str, needle: &str) -> Option<usize> {
     None
 }
 
+fn is_call_boundary(bytes: &[u8], index: usize) -> bool {
+    let Some(previous) = index
+        .checked_sub(1)
+        .and_then(|value| bytes.get(value))
+        .copied()
+    else {
+        return true;
+    };
+    previous != b'.' && !previous.is_ascii_alphanumeric() && !matches!(previous, b'_' | b'$')
+}
+
 fn strip_comments_preserving_strings(content: &str) -> String {
     let bytes = content.as_bytes();
-    let mut output = String::with_capacity(content.len());
+    let mut output = Vec::with_capacity(content.len());
     let mut index = 0;
     let mut quote: Option<u8> = None;
     let mut escaped = false;
@@ -301,18 +384,18 @@ fn strip_comments_preserving_strings(content: &str) -> String {
 
         if block_comment {
             if byte == b'*' && next == Some(b'/') {
-                output.push_str("  ");
+                output.extend_from_slice(b"  ");
                 index += 2;
                 block_comment = false;
             } else {
-                output.push(if byte == b'\n' { '\n' } else { ' ' });
+                output.push(if byte == b'\n' { b'\n' } else { b' ' });
                 index += 1;
             }
             continue;
         }
 
         if let Some(active_quote) = quote {
-            output.push(byte as char);
+            output.push(byte);
             if escaped {
                 escaped = false;
             } else if byte == b'\\' {
@@ -326,31 +409,31 @@ fn strip_comments_preserving_strings(content: &str) -> String {
 
         if matches!(byte, b'\'' | b'"' | b'`') {
             quote = Some(byte);
-            output.push(byte as char);
+            output.push(byte);
             index += 1;
             continue;
         }
         if byte == b'/' && next == Some(b'/') {
-            output.push_str("  ");
+            output.extend_from_slice(b"  ");
             index += 2;
             while index < bytes.len() && bytes[index] != b'\n' {
-                output.push(' ');
+                output.push(b' ');
                 index += 1;
             }
             continue;
         }
         if byte == b'/' && next == Some(b'*') {
-            output.push_str("  ");
+            output.extend_from_slice(b"  ");
             index += 2;
             block_comment = true;
             continue;
         }
 
-        output.push(byte as char);
+        output.push(byte);
         index += 1;
     }
 
-    output
+    String::from_utf8(output).expect("comment masking must preserve valid UTF-8")
 }
 
 fn collect_ts_like_files(
@@ -430,15 +513,40 @@ fn extract_first_quoted(input: &str) -> Option<String> {
 
 fn extract_first_quoted_with_delimiter(input: &str) -> Option<(char, String)> {
     let start = input.find(['\'', '"', '`'])?;
-    let quote = input.as_bytes()[start] as char;
-    let after = &input[start + 1..];
-    let end = after.find(quote)?;
-    Some((quote, after[..end].to_string()))
+    extract_quoted_with_delimiter(&input[start..])
+}
+
+fn extract_leading_quoted_with_delimiter(input: &str) -> Option<(char, String)> {
+    extract_quoted_with_delimiter(input.trim_start())
+}
+
+fn extract_quoted_with_delimiter(input: &str) -> Option<(char, String)> {
+    let quote = input.chars().next()?;
+    if !matches!(quote, '\'' | '"' | '`') {
+        return None;
+    }
+
+    let mut escaped = false;
+    for (index, current) in input[1..].char_indices() {
+        if escaped {
+            escaped = false;
+            continue;
+        }
+        if current == '\\' {
+            escaped = true;
+            continue;
+        }
+        if current == quote {
+            return Some((quote, input[1..index + 1].to_string()));
+        }
+    }
+
+    None
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{extract_imports_from_content, should_ignore, ScanOptions};
+    use super::{extract_imports_from_content, should_ignore, source_for_import_scan, ScanOptions};
 
     fn import_paths(content: &str) -> Vec<String> {
         extract_imports_from_content(content)
@@ -534,6 +642,36 @@ import { visible } from '../shared/visible';
 "#;
 
         assert_eq!(import_paths(content), vec!["../shared/visible"]);
+    }
+
+    #[test]
+    fn extracts_multiple_require_calls_on_one_line() {
+        let content = "const values = [require('./first'), require('./second')];";
+        assert_eq!(import_paths(content), vec!["./first", "./second"]);
+    }
+
+    #[test]
+    fn extracts_multiple_dynamic_import_calls_on_one_line() {
+        let content = "const values = Promise.all([import('./first'), import('./second')]);";
+        assert_eq!(import_paths(content), vec!["./first", "./second"]);
+    }
+
+    #[test]
+    fn ignores_string_after_non_literal_dynamic_import() {
+        let content = "const value = import(moduleName); const text = './not-an-import';";
+        assert!(import_paths(content).is_empty());
+    }
+
+    #[test]
+    fn masks_svelte_markup_while_preserving_script_line_numbers() {
+        let content = r#"<div>import('./markup')</div>
+<script lang="ts">
+  const feature = import('./feature');
+</script>
+"#;
+        let masked = source_for_import_scan("component.svelte", content);
+        let imports = extract_imports_from_content(&masked);
+        assert_eq!(imports, vec![(3, "./feature".to_string())]);
     }
 
     #[test]

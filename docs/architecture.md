@@ -59,7 +59,7 @@ framework repository itself as an application.
 금지:
 - `client -> server`
 - `server -> client`
-- `shared -> UI/DB/infra runtime`
+- `shared -> policy-denied capability` (기본 `ui`, `database`, `runtime`)
 - `domain -> other-domain internal path`
 - `domain -> undeclared domain public API`
 - cyclic domain dependency graphs
@@ -83,6 +83,8 @@ framework repository itself as an application.
 ## 6. Package Responsibility
 
 - `packages/runtime`: pure TypeScript helper types used by generated contracts
+- `packages/ui`: framework-neutral browser rendering for normalized Boundra
+  diagnostics; published through the single `boundra/ui` npm subpath
 
 ## 7. Expansion Strategy
 

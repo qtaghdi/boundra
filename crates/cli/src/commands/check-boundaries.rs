@@ -3,7 +3,7 @@ use std::path::PathBuf;
 
 use boundra_core::load_project_model;
 use boundra_parser::{collect_imports_with_report, ScanOptions};
-use boundra_rules::{check_boundaries_with_context, BoundaryContext};
+use boundra_rules::{check_boundaries_with_config, BoundaryContext};
 
 use crate::output::{
     print_error, print_error_json, print_json, print_text, BoundaryScanCoverage, CliDiagnostic,
@@ -60,7 +60,7 @@ pub(crate) fn run(options: &CheckBoundariesOptions) -> i32 {
             project.domains.keys().map(String::as_str),
         ),
     };
-    let violations = check_boundaries_with_context(
+    let violations = check_boundaries_with_config(
         &scan_report.imports,
         &BoundaryContext {
             apps_path: project.config.paths.apps.clone(),
@@ -69,6 +69,7 @@ pub(crate) fn run(options: &CheckBoundariesOptions) -> i32 {
             domains: project.domains,
             path_aliases: project.path_aliases,
         },
+        &project.config.check_boundaries,
     );
 
     match options.format {

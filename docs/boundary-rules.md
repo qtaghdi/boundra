@@ -11,13 +11,14 @@
 - Reason: 계층 역전 방지
 
 ### BR-003: Shared Purity
-- Rule: `domains/*/shared/**`는 UI/DB/infra runtime 의존 금지
-- Allow: contract 정의에 사용하는 `boundra` runtime과 schema provider 같은
-  pure package dependency
-- Bare package import는 `paths.apps`가 `.`이어도 workspace app 경로로
-  재분류하지 않는다. React, Node runtime, DB처럼 명시적으로 차단된 package는
-  계속 위반이다.
-- Reason: 계약 계층의 순수성 보장
+- Rule: `domains/*/shared/**`는 shared policy가 거부한 capability 의존 금지
+- Default denied capabilities: `ui`, `database`, `runtime`
+- Default classification preserves the existing React/Next, Prisma, Node runtime,
+  `packages/ui`, `packages/db`, `packages/infra`, and app-path behavior
+- `checkBoundaries.capabilities`에서 dependency를 capability로 분류하고
+  `checkBoundaries.policy.shared.denyCapabilities`에서 거부 정책을 설정한다.
+- Allow: capability가 거부되지 않은 pure contract/schema dependency
+- Reason: 계약 계층의 순수성을 프로젝트별 stack에 맞게 강제
 
 ### BR-004: Cross-Domain Access Policy
 - Rule: 도메인 간 직접 내부 경로 import 금지
