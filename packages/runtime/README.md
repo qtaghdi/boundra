@@ -32,7 +32,25 @@ on a structural `parse(unknown)` contract.
 - `implementRoute`, `implementQuery`, `implementMutation`
 - `executeContract`
 - `BoundraRuntimeError`
+- `defineConfig` and `BoundraConfig` from `boundra/config`
 - `createBoundraErrorView` from `boundra/ui`
+
+Configuration-aware TypeScript tooling can use the public config contract:
+
+```ts
+import { defineConfig } from "boundra/config";
+
+const config = defineConfig({
+  paths: {
+    domains: "domains",
+  },
+});
+```
+
+The native CLI still discovers `boundra.config.json`. The `boundra/config`
+subpath provides authoring types and helpers without requiring the Rust CLI to
+execute JavaScript or TypeScript configuration files. See
+`docs/config-authoring.md` in the repository for the supported surface.
 
 Validation failures include provider-neutral field issues:
 
