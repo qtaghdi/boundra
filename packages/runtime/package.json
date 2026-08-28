@@ -29,6 +29,10 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     },
+    "./config": {
+      "types": "./dist/config/index.d.ts",
+      "import": "./dist/config/index.js"
+    },
     "./dev-overlay": {
       "types": "./dist/dev-overlay.d.ts",
       "import": "./dist/dev-overlay.js"
@@ -43,7 +47,7 @@
     }
   },
   "scripts": {
-    "build": "tsc -p tsconfig.build.json && tsc -p ../ui/tsconfig.build.json",
+    "build": "tsc -p tsconfig.build.json && tsc -p ../ui/tsconfig.build.json && tsc -p ../config/tsconfig.build.json",
     "prepack": "npm run build"
   },
   "engines": {
