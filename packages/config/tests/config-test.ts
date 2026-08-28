@@ -1,4 +1,4 @@
-import { defineConfig } from "../src/index";
+import { defineConfig, type BoundraConfig } from "../src/index";
 
 function assert(condition: unknown, message: string): asserts condition {
   if (!condition) throw new Error(message);
@@ -42,6 +42,9 @@ const config = defineConfig({
   },
 });
 
+const typedConfig: BoundraConfig = config;
+void typedConfig;
+
 assert(config.paths.domains === "domains", "defineConfig should preserve config values");
 assert(
   config.checkBoundaries.capabilities.external.react[0] === "ui",
@@ -49,8 +52,11 @@ assert(
 );
 
 if (false) {
-  // @ts-expect-error currently unsupported config fields must not type-check
-  defineConfig({ graph: { defaultFormat: "mermaid" } });
+  const unsupportedConfig: BoundraConfig = {
+    // @ts-expect-error currently unsupported config fields must not type-check
+    graph: { defaultFormat: "mermaid" },
+  };
+  void unsupportedConfig;
 
   defineConfig({
     paths: {
