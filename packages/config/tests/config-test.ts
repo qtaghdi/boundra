@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+
 import { defineConfig, type BoundraConfig } from "../src/index";
 
 function assert(condition: unknown, message: string): asserts condition {
@@ -49,6 +51,22 @@ assert(config.paths.domains === "domains", "defineConfig should preserve config 
 assert(
   config.checkBoundaries.capabilities.external.react[0] === "ui",
   "defineConfig should preserve literal capability values",
+);
+
+const fixturePath = new URL(
+  "../../../fixtures/config-conformance/boundra.config.json",
+  import.meta.url,
+);
+const fixture = JSON.parse(readFileSync(fixturePath, "utf8")) as BoundraConfig;
+const fixtureConfig = defineConfig(fixture);
+
+assert(
+  fixtureConfig.project?.workspaceRoot === "workspace",
+  "shared config fixture should be consumable through boundra/config",
+);
+assert(
+  fixtureConfig.checkBoundaries?.policy?.shared?.denyCapabilities?.includes("application") === true,
+  "shared config fixture should preserve nested policy values",
 );
 
 if (false) {

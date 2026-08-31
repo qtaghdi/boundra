@@ -1,0 +1,39 @@
+{
+  "project": {
+    "workspaceRoot": "workspace"
+  },
+  "paths": {
+    "apps": "products",
+    "domains": "bounded-contexts",
+    "packages": "libraries",
+    "crates": "native"
+  },
+  "domain": {
+    "manifestFile": "boundra-domain.json",
+    "publicApi": {
+      "client": ["./browser/public.ts"],
+      "server": ["./backend/public.ts"],
+      "shared": ["./contract/public.ts"]
+    }
+  },
+  "checkBoundaries": {
+    "includeExtensions": ["ts", "tsx", "svelte"],
+    "ignore": ["**/generated/**", "**/.cache/**"],
+    "capabilities": {
+      "external": {
+        "react": ["ui", "browser"],
+        "node:*": ["runtime", "node"]
+      },
+      "packages": {
+        "persistence": ["database"],
+        "design-system": ["ui"]
+      },
+      "apps": ["runtime", "application"]
+    },
+    "policy": {
+      "shared": {
+        "denyCapabilities": ["ui", "database", "runtime", "application"]
+      }
+    }
+  }
+}
