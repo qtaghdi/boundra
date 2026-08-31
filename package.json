@@ -7,6 +7,7 @@
   "scripts": {
     "benchmark:boundaries": "node scripts/benchmark-boundaries.mjs --files 1000 --iterations 3",
     "benchmark:boundaries:large": "node scripts/benchmark-boundaries.mjs --files 10000 --iterations 3",
+    "check-config-drift": "node scripts/check-config-drift.mjs",
     "check-release-notes": "node scripts/check-release-notes.mjs",
     "check-release-version": "node scripts/check-release-version.mjs",
     "example:order-billing": "tsx --tsconfig examples/order-billing/tsconfig.json examples/order-billing/src/index.ts",
@@ -18,7 +19,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "verify-clean-room": "node scripts/verify-clean-room.mjs",
     "verify-clean-room-offline": "node scripts/verify-clean-room.mjs --offline",
-    "verify-example": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p examples/order-billing/tsconfig.json && node --import tsx packages/config/tests/config-test.ts && node --import tsx packages/runtime/tests/runtime-test.ts && node --import tsx packages/ui/tests/error-view-test.ts && tsx --tsconfig examples/order-billing/tsconfig.json examples/order-billing/src/index.ts && cargo test --workspace && node --import tsx packages/runtime/tests/vite-test.ts && cargo run -p boundra-cli -- check-boundaries --root examples/order-billing --format json && cargo run -p boundra-cli -- graph-domains --root examples/order-billing --format json"
+    "verify-example": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p examples/order-billing/tsconfig.json && pnpm check-config-drift && node --import tsx packages/config/tests/config-test.ts && node --import tsx packages/runtime/tests/runtime-test.ts && node --import tsx packages/ui/tests/error-view-test.ts && tsx --tsconfig examples/order-billing/tsconfig.json examples/order-billing/src/index.ts && cargo test --workspace && node --import tsx packages/runtime/tests/vite-test.ts && cargo run -p boundra-cli -- check-boundaries --root examples/order-billing --format json && cargo run -p boundra-cli -- graph-domains --root examples/order-billing --format json"
   },
   "devDependencies": {
     "tsx": "^4.22.4",
