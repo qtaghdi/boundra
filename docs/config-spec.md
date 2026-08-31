@@ -241,3 +241,23 @@ The following fields are planned or possible later, but are not implemented in t
 - `graph`
 - custom exit codes
 - custom diagnostic messages
+
+## 8. Conformance and Drift Protection
+
+The native Rust loader and the public `boundra/config` TypeScript surface must
+represent the same supported configuration contract.
+
+The repository keeps one full representative config fixture at
+`fixtures/config-conformance/boundra.config.json`. Rust integration tests load
+that fixture through the real native config loader, while the TypeScript config
+tests consume the same fixture through the public authoring helper.
+
+In addition, `pnpm check-config-drift` compares the Rust `Raw*Config` field tree
+with the TypeScript `BoundraConfig` interface tree. The check compares supported
+field paths and their normalized leaf kinds (`string`, `string[]`, and
+`record<string, string[]>`). CI fails when either side adds, removes, renames,
+or changes the shape of a supported field without updating the other side.
+
+This check protects the public authoring API from claiming support that the CLI
+does not implement, and protects the native CLI from adding configuration that
+TypeScript users cannot author through `boundra/config`.
