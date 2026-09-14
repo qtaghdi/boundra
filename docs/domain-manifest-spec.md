@@ -3,7 +3,7 @@
 ## 1. File Location
 
 ```txt
-domains/<optional-group-path>/<domain>/domain.json
+<configured-domains-path>/[<group>/]<domain>/<configured-manifest-file>
 ```
 
 Boundra recursively discovers the configured manifest filename below

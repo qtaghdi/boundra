@@ -32,12 +32,12 @@ Input rules:
 - `<name>` must be `kebab-case`.
 
 Generated targets:
-- `domains/[<parent-path>/]<name>/client/`
-- `domains/[<parent-path>/]<name>/server/`
-- `domains/[<parent-path>/]<name>/shared/`
-- `domains/[<parent-path>/]<name>/mcp/`
-- `domains/[<parent-path>/]<name>/tests/`
-- `domains/[<parent-path>/]<name>/domain.json`
+- `<paths.domains>/[<parent-path>/]<name>/client/`
+- `<paths.domains>/[<parent-path>/]<name>/server/`
+- `<paths.domains>/[<parent-path>/]<name>/shared/`
+- `<paths.domains>/[<parent-path>/]<name>/mcp/`
+- `<paths.domains>/[<parent-path>/]<name>/tests/`
+- `<paths.domains>/[<parent-path>/]<name>/<domain.manifestFile>`
 
 Options:
 - `--root <path>` (default: `.`)

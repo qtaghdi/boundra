@@ -85,22 +85,57 @@ pub(crate) fn run(options: &CreateDomainOptions) -> i32 {
             }
         }
     }
-    let domain_root = options
-        .path
-        .as_ref()
-        .map_or_else(|| domains_root.clone(), |path| domains_root.join(path))
-        .join(&options.name);
+    let domain_parent = match prepare_domain_parent(&domains_root, options.path.as_deref()) {
+        Ok(parent) => parent,
+        Err(err) => {
+            print_error(
+                &CliDiagnostic::new(
+                    "DOMAIN-006",
+                    format!("unsafe domain destination: {err}"),
+                    "remove symbolic links below paths.domains or choose another --path",
+                )
+                .with_context("path", display_path(&domains_root)),
+            );
+            return 2;
+        }
+    };
+    let domain_root = domain_parent.join(&options.name);
 
-    if domain_root.exists() {
-        print_error(
-            &CliDiagnostic::new(
-                "DOMAIN-002",
-                format!("domain '{}' already exists", options.name),
-                "choose a new domain name or use the existing domain",
-            )
-            .with_context("path", display_path(&domain_root)),
-        );
-        return 2;
+    match fs::symlink_metadata(&domain_root) {
+        Ok(metadata) if metadata.file_type().is_symlink() => {
+            print_error(
+                &CliDiagnostic::new(
+                    "DOMAIN-006",
+                    "unsafe domain destination: target is a symbolic link",
+                    "remove the symbolic link or choose another domain name",
+                )
+                .with_context("path", display_path(&domain_root)),
+            );
+            return 2;
+        }
+        Ok(_) => {
+            print_error(
+                &CliDiagnostic::new(
+                    "DOMAIN-002",
+                    format!("domain '{}' already exists", options.name),
+                    "choose a new domain name or use the existing domain",
+                )
+                .with_context("path", display_path(&domain_root)),
+            );
+            return 2;
+        }
+        Err(err) if err.kind() == std::io::ErrorKind::NotFound => {}
+        Err(err) => {
+            print_error(
+                &CliDiagnostic::new(
+                    "DOMAIN-006",
+                    format!("failed to validate domain destination: {err}"),
+                    "check the destination permissions and symbolic links",
+                )
+                .with_context("path", display_path(&domain_root)),
+            );
+            return 2;
+        }
     }
 
     if let Err(err) = scaffold_domain(
@@ -143,6 +178,49 @@ fn validate_parent_path(path: &Path) -> Result<(), String> {
         }
     }
     Ok(())
+}
+
+fn prepare_domain_parent(domains_root: &Path, parent: Option<&Path>) -> std::io::Result<PathBuf> {
+    fs::create_dir_all(domains_root)?;
+    let mut current = fs::canonicalize(domains_root)?;
+
+    if let Some(parent) = parent {
+        for component in parent.components() {
+            let Component::Normal(segment) = component else {
+                return Err(std::io::Error::new(
+                    std::io::ErrorKind::InvalidInput,
+                    "domain parent contains an invalid path component",
+                ));
+            };
+            let next = current.join(segment);
+            match fs::symlink_metadata(&next) {
+                Ok(metadata) if metadata.file_type().is_symlink() => {
+                    return Err(std::io::Error::new(
+                        std::io::ErrorKind::InvalidInput,
+                        format!(
+                            "symbolic link is not allowed below paths.domains: {}",
+                            display_path(&next)
+                        ),
+                    ));
+                }
+                Ok(metadata) if !metadata.is_dir() => {
+                    return Err(std::io::Error::new(
+                        std::io::ErrorKind::InvalidInput,
+                        format!(
+                            "domain parent component is not a directory: {}",
+                            display_path(&next)
+                        ),
+                    ));
+                }
+                Ok(_) => {}
+                Err(err) if err.kind() == std::io::ErrorKind::NotFound => fs::create_dir(&next)?,
+                Err(err) => return Err(err),
+            }
+            current = next;
+        }
+    }
+
+    Ok(current)
 }
 
 fn scaffold_domain(

@@ -401,11 +401,16 @@ fn load_domain_manifests(
         let fallback_name = domain_root
             .file_name()
             .and_then(|name| name.to_str())
-            .unwrap_or_default()
+            .ok_or_else(|| {
+                io::Error::new(
+                    io::ErrorKind::InvalidData,
+                    format!(
+                        "domain root must use valid UTF-8: {}",
+                        manifest_path.display()
+                    ),
+                )
+            })?
             .to_string();
-        if fallback_name.is_empty() {
-            continue;
-        }
 
         let manifest =
             load_domain_manifest(&manifest_path, &fallback_name, &config.domain.public_api)?;
@@ -420,7 +425,16 @@ fn load_domain_manifests(
                 ),
             )
         })?;
-        let relative_root = relative_root.to_string_lossy().replace('\\', "/");
+        let relative_root = relative_root.to_str().ok_or_else(|| {
+            io::Error::new(
+                io::ErrorKind::InvalidData,
+                format!(
+                    "domain root must use valid UTF-8: {}",
+                    manifest_path.display()
+                ),
+            )
+        })?;
+        let relative_root = relative_root.replace('\\', "/");
         if let Some(existing_root) = domain_roots.get(&manifest.name) {
             return invalid_data(format!(
                 "duplicate domain name '{}': {} and {}",

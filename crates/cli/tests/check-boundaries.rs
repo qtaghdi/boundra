@@ -602,6 +602,43 @@ fn nested_domain_roots_drive_dependency_updates_and_boundary_checks() {
     let stdout = String::from_utf8_lossy(&check.stdout);
     assert_eq!(check.status.code(), Some(1));
     assert!(stdout.contains("BR-004"));
+    assert!(stdout.contains("../../../finance/billing/server/internal/charge"));
+    assert!(!stdout.contains("import: ../../billing/server/internal/charge"));
+}
+
+#[cfg(unix)]
+#[test]
+fn create_domain_rejects_symlinked_nested_parent() {
+    use std::os::unix::fs::symlink;
+
+    let root = create_temp_dir("symlinked-domain-parent");
+    let outside = create_temp_dir("symlinked-domain-parent-outside");
+    fs::create_dir_all(root.join("domains")).expect("failed to create domains root");
+    symlink(&outside, root.join("domains/commerce")).expect("failed to create parent symlink");
+
+    let output = run_boundra(&root, &["create-domain", "billing", "--path", "commerce"]);
+    let stderr = String::from_utf8_lossy(&output.stderr);
+
+    assert_eq!(output.status.code(), Some(2));
+    assert!(stderr.contains("[ERROR] DOMAIN-006"));
+    assert!(!outside.join("billing").exists());
+}
+
+#[cfg(unix)]
+#[test]
+fn create_domain_uses_canonical_configured_domains_root() {
+    use std::os::unix::fs::symlink;
+
+    let root = create_temp_dir("symlinked-domains-root");
+    let configured_target = create_temp_dir("symlinked-domains-root-target");
+    symlink(&configured_target, root.join("domains")).expect("failed to link domains root");
+
+    let output = run_boundra(&root, &["create-domain", "billing", "--path", "commerce"]);
+
+    assert_eq!(output.status.code(), Some(0));
+    assert!(configured_target
+        .join("commerce/billing/domain.json")
+        .exists());
 }
 
 #[test]
