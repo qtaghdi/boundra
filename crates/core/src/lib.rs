@@ -152,7 +152,11 @@ pub struct LayerCapabilityPolicy {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PathAlias {
     pub prefix: String,
+    pub suffix: String,
     pub target_prefix: String,
+    pub target_suffix: String,
+    pub target_uses_wildcard: bool,
+    pub exact: bool,
 }
 
 impl PublicApi {
@@ -264,7 +268,7 @@ pub fn load_project_model(root: &Path) -> io::Result<ProjectModel> {
     let config = load_config(root)?;
     validate_config(root, &config)?;
     let (domains, domain_roots) = load_domain_manifests(root, &config)?;
-    let path_aliases = load_tsconfig_path_aliases(root)?;
+    let path_aliases = load_path_aliases(root)?;
 
     Ok(ProjectModel {
         root: root.to_path_buf(),
@@ -583,6 +587,62 @@ pub fn find_domain_dependency_cycle(
     None
 }
 
+fn load_path_aliases(root: &Path) -> io::Result<Vec<PathAlias>> {
+    let mut aliases = load_package_import_aliases(root)?;
+    aliases.extend(load_tsconfig_path_aliases(root)?);
+    aliases.sort_by_key(|alias| {
+        (
+            std::cmp::Reverse(alias.prefix.len() + alias.suffix.len()),
+            std::cmp::Reverse(alias.exact),
+        )
+    });
+    Ok(aliases)
+}
+
+fn load_package_import_aliases(root: &Path) -> io::Result<Vec<PathAlias>> {
+    let workspace_root = absolute_normalized_path(root)?;
+    let package_path = workspace_root.join("package.json");
+    if !package_path.exists() {
+        return Ok(Vec::new());
+    }
+
+    let content = fs::read_to_string(&package_path)?;
+    let package = parse_json_file::<RawPackageJson>(&package_path, &content)?;
+    let mut aliases = Vec::new();
+
+    for (pattern, target) in package.imports.unwrap_or_default() {
+        let Some(target) = target.as_str() else {
+            continue;
+        };
+        if !pattern.starts_with('#') || pattern == "#" || !target.starts_with("./") {
+            continue;
+        }
+        if pattern.matches('*').count() > 1 || target.matches('*').count() > 1 {
+            return invalid_data(format!(
+                "package import alias must use at most one '*': {pattern} -> {target}"
+            ));
+        }
+        if pattern.contains('*') != target.contains('*') {
+            return invalid_data(format!(
+                "package import alias and target must use '*' together: {pattern} -> {target}"
+            ));
+        }
+
+        let alias = build_path_alias(&workspace_root, &workspace_root, ".", &pattern, target)
+            .ok_or_else(|| {
+                io::Error::new(
+                    io::ErrorKind::InvalidData,
+                    format!(
+                        "package import alias target must remain inside the workspace: {pattern} -> {target}"
+                    ),
+                )
+            })?;
+        aliases.push(alias);
+    }
+
+    Ok(aliases)
+}
+
 fn load_tsconfig_path_aliases(root: &Path) -> io::Result<Vec<PathAlias>> {
     let workspace_root = absolute_normalized_path(root)?;
     let tsconfig_path = workspace_root.join("tsconfig.json");
@@ -596,7 +656,7 @@ fn load_tsconfig_path_aliases(root: &Path) -> io::Result<Vec<PathAlias>> {
 
     let mut aliases = aliases.into_values().collect::<Vec<_>>();
     // More specific aliases must be matched before broad aliases.
-    aliases.sort_by_key(|alias| std::cmp::Reverse(alias.prefix.len()));
+    aliases.sort_by_key(|alias| std::cmp::Reverse(alias.prefix.len() + alias.suffix.len()));
     Ok(aliases)
 }
 
@@ -639,22 +699,19 @@ fn load_tsconfig_aliases_recursive(
                 let Some(target) = targets.first() else {
                     continue;
                 };
-                let prefix = alias.strip_suffix('*').unwrap_or(&alias).to_string();
-                if prefix.is_empty() {
+                if alias.matches('*').count() > 1 || target.matches('*').count() > 1 {
                     continue;
                 }
-                let Some(target_prefix) =
-                    normalize_alias_target(workspace_root, &tsconfig_path, base_url, target)
-                else {
+                let Some(path_alias) = build_path_alias(
+                    workspace_root,
+                    tsconfig_path.parent().unwrap_or_else(|| Path::new(".")),
+                    base_url,
+                    &alias,
+                    target,
+                ) else {
                     continue;
                 };
-                aliases.insert(
-                    prefix.clone(),
-                    PathAlias {
-                        prefix,
-                        target_prefix,
-                    },
-                );
+                aliases.insert(alias, path_alias);
             }
         }
     }
@@ -718,24 +775,39 @@ fn resolve_tsconfig_reference(tsconfig_path: &Path, reference: &str) -> io::Resu
         })
 }
 
-fn normalize_alias_target(
+fn build_path_alias(
     workspace_root: &Path,
-    tsconfig_path: &Path,
+    config_dir: &Path,
     base_url: &str,
+    pattern: &str,
     target: &str,
-) -> Option<String> {
-    let target_without_wildcard = target.strip_suffix('*').unwrap_or(target);
-    let keep_trailing_separator =
-        target_without_wildcard.ends_with('/') || target_without_wildcard.ends_with('\\');
-    let config_dir = tsconfig_path.parent().unwrap_or_else(|| Path::new("."));
-    let absolute_target =
-        normalize_filesystem_path(&config_dir.join(base_url).join(target_without_wildcard));
+) -> Option<PathAlias> {
+    let (prefix, suffix, exact) = match pattern.split_once('*') {
+        Some((prefix, suffix)) if !prefix.is_empty() => {
+            (prefix.to_string(), suffix.to_string(), false)
+        }
+        Some(_) => return None,
+        None if !pattern.is_empty() => (pattern.to_string(), String::new(), true),
+        None => return None,
+    };
+    let target_pattern = target.split_once('*');
+    let (target_prefix, target_suffix) =
+        target_pattern.map_or((target, ""), |(prefix, suffix)| (prefix, suffix));
+    let keep_trailing_separator = target_prefix.ends_with('/') || target_prefix.ends_with('\\');
+    let absolute_target = normalize_filesystem_path(&config_dir.join(base_url).join(target_prefix));
     let relative = absolute_target.strip_prefix(workspace_root).ok()?;
-    let mut normalized = display_path(relative);
-    if keep_trailing_separator && !normalized.ends_with('/') {
-        normalized.push('/');
+    let mut normalized_prefix = display_path(relative);
+    if keep_trailing_separator && !normalized_prefix.ends_with('/') {
+        normalized_prefix.push('/');
     }
-    Some(normalized)
+    Some(PathAlias {
+        prefix,
+        suffix,
+        target_prefix: normalized_prefix,
+        target_suffix: target_suffix.to_string(),
+        target_uses_wildcard: target_pattern.is_some(),
+        exact,
+    })
 }
 
 fn absolute_normalized_path(path: &Path) -> io::Result<PathBuf> {
@@ -946,6 +1018,11 @@ struct RawDomainManifest {
 struct RawTsConfig {
     extends: Option<RawTsConfigExtends>,
     compiler_options: Option<RawCompilerOptions>,
+}
+
+#[derive(Debug, Default, Deserialize)]
+struct RawPackageJson {
+    imports: Option<BTreeMap<String, serde_json::Value>>,
 }
 
 #[derive(Debug, Deserialize)]

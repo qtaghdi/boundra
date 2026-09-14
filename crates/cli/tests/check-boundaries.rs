@@ -990,6 +990,92 @@ fn check_boundaries_resolves_tsconfig_path_aliases() {
 }
 
 #[test]
+fn check_boundaries_resolves_package_import_aliases() {
+    let root = create_temp_dir("package-import-aliases");
+    assert_eq!(
+        run_boundra(&root, &["create-domain", "order"])
+            .status
+            .code(),
+        Some(0)
+    );
+    fs::create_dir_all(root.join("apps/web/src")).expect("failed to create app source");
+    fs::create_dir_all(root.join("domains/order/server/internal"))
+        .expect("failed to create internal domain path");
+    fs::write(
+        root.join("domains/order/server/internal/checkout.ts"),
+        "export {};\n",
+    )
+    .expect("failed to write internal domain target");
+    fs::write(
+        root.join("package.json"),
+        r###"{
+  "imports": {
+    "#order-internal": "./domains/order/server/internal/checkout.ts",
+    "#domain/*.js": "./domains/*/server/internal/checkout.ts",
+    "#conditional": { "default": "./domains/order/shared/public.ts" }
+  }
+}
+"###,
+    )
+    .expect("failed to write package manifest");
+    fs::write(
+        root.join("apps/web/src/checkout.ts"),
+        concat!(
+            "import '#order-internal';\n",
+            "import '#domain/order.js';\n",
+            "import '#order-internal-extra';\n",
+            "import '#conditional';\n",
+        ),
+    )
+    .expect("failed to write aliased imports");
+
+    let output = run_boundra(&root, &["check-boundaries", "--format", "json"]);
+    let json = parse_json_stdout(&output);
+    let violations = json["violations"]
+        .as_array()
+        .expect("violations should be an array");
+
+    assert_eq!(output.status.code(), Some(1));
+    assert_eq!(violations.len(), 2);
+    assert!(violations
+        .iter()
+        .all(|violation| violation["rule"] == "BR-005"));
+    assert!(violations
+        .iter()
+        .any(|violation| violation["import"] == "#order-internal"));
+    assert!(violations
+        .iter()
+        .any(|violation| violation["import"] == "#domain/order.js"));
+}
+
+#[test]
+fn check_boundaries_rejects_package_import_target_outside_workspace() {
+    let root = create_temp_dir("package-import-outside-workspace");
+    assert_eq!(
+        run_boundra(&root, &["create-domain", "order"])
+            .status
+            .code(),
+        Some(0)
+    );
+    fs::write(
+        root.join("package.json"),
+        r###"{
+  "imports": {
+    "#outside": "./../outside.ts"
+  }
+}
+"###,
+    )
+    .expect("failed to write package manifest");
+
+    let output = run_boundra(&root, &["check-boundaries"]);
+    let stderr = String::from_utf8_lossy(&output.stderr);
+
+    assert_eq!(output.status.code(), Some(2));
+    assert!(stderr.contains("package import alias target must remain inside the workspace"));
+}
+
+#[test]
 fn check_boundaries_resolves_extended_tsconfig_aliases() {
     let root = create_fixture("extended-path-aliases");
     fs::create_dir_all(root.join(".framework")).expect("failed to create framework config dir");
