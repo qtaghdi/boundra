@@ -181,6 +181,7 @@ fn parse_create_domain_options(args: &[String]) -> Result<CreateDomainOptions, S
 
     let mut options = CreateDomainOptions {
         name: name.clone(),
+        path: None,
         root: PathBuf::from("."),
     };
     let mut index = 1;
@@ -199,6 +200,21 @@ fn parse_create_domain_options(args: &[String]) -> Result<CreateDomainOptions, S
 
         if let Some(value) = arg.strip_prefix("--root=") {
             options.root = PathBuf::from(value);
+            index += 1;
+            continue;
+        }
+
+        if arg == "--path" {
+            let Some(value) = args.get(index + 1) else {
+                return Err("missing value for --path".to_string());
+            };
+            options.path = Some(PathBuf::from(value));
+            index += 2;
+            continue;
+        }
+
+        if let Some(value) = arg.strip_prefix("--path=") {
+            options.path = Some(PathBuf::from(value));
             index += 1;
             continue;
         }

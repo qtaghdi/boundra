@@ -1,4 +1,4 @@
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 use std::path::PathBuf;
 
 use boundra_core::load_project_model;
@@ -56,8 +56,7 @@ pub(crate) fn run(options: &CheckBoundariesOptions) -> i32 {
         scanned_file_count: scan_report.scanned_file_count,
         analyzed_domain_count: count_analyzed_domains(
             &scan_report.scanned_files,
-            &project.config.paths.domains,
-            project.domains.keys().map(String::as_str),
+            &project.domain_roots,
         ),
     };
     let violations = check_boundaries_with_config(
@@ -67,6 +66,7 @@ pub(crate) fn run(options: &CheckBoundariesOptions) -> i32 {
             domains_path: project.config.paths.domains.clone(),
             packages_path: project.config.paths.packages.clone(),
             domains: project.domains,
+            domain_roots: project.domain_roots,
             path_aliases: project.path_aliases,
         },
         &project.config.check_boundaries,
@@ -85,33 +85,23 @@ pub(crate) fn run(options: &CheckBoundariesOptions) -> i32 {
 }
 
 /// Count manifest-backed domains that contributed at least one scanned file.
-fn count_analyzed_domains<'a>(
+fn count_analyzed_domains(
     scanned_files: &[String],
-    domains_path: &str,
-    known_domains: impl IntoIterator<Item = &'a str>,
+    domain_roots: &BTreeMap<String, String>,
 ) -> usize {
-    let known_domains = known_domains.into_iter().collect::<BTreeSet<_>>();
-    let normalized_root = domains_path
-        .replace('\\', "/")
-        .trim_matches('/')
-        .trim_start_matches("./")
-        .to_string();
-    let normalized_root = if normalized_root == "." {
-        String::new()
-    } else {
-        normalized_root
-    };
-    let prefix = (!normalized_root.is_empty()).then(|| format!("{normalized_root}/"));
-
     scanned_files
         .iter()
         .filter_map(|file| {
-            let relative = match &prefix {
-                Some(prefix) => file.strip_prefix(prefix)?,
-                None => file.as_str(),
-            };
-            let domain = relative.split('/').next()?;
-            known_domains.contains(domain).then_some(domain)
+            let normalized_file = file.replace('\\', "/");
+            domain_roots
+                .iter()
+                .filter(|(_, root)| {
+                    let normalized_root = root.replace('\\', "/").trim_matches('/').to_string();
+                    normalized_file == normalized_root
+                        || normalized_file.starts_with(&format!("{normalized_root}/"))
+                })
+                .max_by_key(|(_, root)| root.len())
+                .map(|(domain, _)| domain.as_str())
         })
         .collect::<BTreeSet<_>>()
         .len()
