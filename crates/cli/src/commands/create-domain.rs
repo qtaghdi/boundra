@@ -1,7 +1,7 @@
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::{Component, Path, PathBuf};
 
-use boundra_core::{load_config, PublicApi};
+use boundra_core::{load_config, load_project_model, PublicApi};
 
 use crate::output::{print_error, CliDiagnostic};
 use crate::util::{display_path, is_kebab_case};
@@ -9,6 +9,7 @@ use crate::util::{display_path, is_kebab_case};
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct CreateDomainOptions {
     pub(crate) name: String,
+    pub(crate) path: Option<PathBuf>,
     pub(crate) root: PathBuf,
 }
 
@@ -23,6 +24,19 @@ pub(crate) fn run(options: &CreateDomainOptions) -> i32 {
             .with_context("domain", &options.name),
         );
         return 2;
+    }
+    if let Some(path) = &options.path {
+        if let Err(message) = validate_parent_path(path) {
+            print_error(
+                &CliDiagnostic::new(
+                    "DOMAIN-005",
+                    message,
+                    "use a relative kebab-case path such as 'commerce/core'",
+                )
+                .with_context("path", path.display().to_string()),
+            );
+            return 2;
+        }
     }
 
     let config = match load_config(&options.root) {
@@ -41,7 +55,41 @@ pub(crate) fn run(options: &CreateDomainOptions) -> i32 {
     };
 
     let domains_root = options.root.join(&config.paths.domains);
-    let domain_root = domains_root.join(&options.name);
+    if domains_root.exists() {
+        match load_project_model(&options.root) {
+            Ok(project) if project.domains.contains_key(&options.name) => {
+                let existing = project
+                    .domain_root(&options.name)
+                    .expect("loaded domain has a root");
+                print_error(
+                    &CliDiagnostic::new(
+                        "DOMAIN-002",
+                        format!("domain '{}' already exists", options.name),
+                        "choose a new domain name or use the existing domain",
+                    )
+                    .with_context("path", display_path(&existing)),
+                );
+                return 2;
+            }
+            Ok(_) => {}
+            Err(err) => {
+                print_error(
+                    &CliDiagnostic::new(
+                        "PROJECT-001",
+                        format!("failed to load project: {err}"),
+                        "fix the reported config or domain manifest and retry",
+                    )
+                    .with_context("root", options.root.display().to_string()),
+                );
+                return 2;
+            }
+        }
+    }
+    let domain_root = options
+        .path
+        .as_ref()
+        .map_or_else(|| domains_root.clone(), |path| domains_root.join(path))
+        .join(&options.name);
 
     if domain_root.exists() {
         print_error(
@@ -55,7 +103,12 @@ pub(crate) fn run(options: &CreateDomainOptions) -> i32 {
         return 2;
     }
 
-    if let Err(err) = scaffold_domain(&domain_root, &options.name, &config.domain.public_api) {
+    if let Err(err) = scaffold_domain(
+        &domain_root,
+        &options.name,
+        &config.domain.manifest_file,
+        &config.domain.public_api,
+    ) {
         print_error(
             &CliDiagnostic::new(
                 "DOMAIN-003",
@@ -72,7 +125,32 @@ pub(crate) fn run(options: &CreateDomainOptions) -> i32 {
     0
 }
 
-fn scaffold_domain(domain_root: &Path, name: &str, public_api: &PublicApi) -> std::io::Result<()> {
+fn validate_parent_path(path: &Path) -> Result<(), String> {
+    if path.as_os_str().is_empty() || path.is_absolute() {
+        return Err("domain parent path must be a non-empty relative path".to_string());
+    }
+    for component in path.components() {
+        let Component::Normal(segment) = component else {
+            return Err("domain parent path cannot contain '.' or '..'".to_string());
+        };
+        let Some(segment) = segment.to_str() else {
+            return Err("domain parent path must be valid UTF-8".to_string());
+        };
+        if !is_kebab_case(segment) {
+            return Err(format!(
+                "domain parent path segment '{segment}' must be kebab-case"
+            ));
+        }
+    }
+    Ok(())
+}
+
+fn scaffold_domain(
+    domain_root: &Path,
+    name: &str,
+    manifest_file: &str,
+    public_api: &PublicApi,
+) -> std::io::Result<()> {
     for layer in ["client", "server", "shared", "mcp", "tests"] {
         fs::create_dir_all(domain_root.join(layer))?;
     }
@@ -89,7 +167,7 @@ fn scaffold_domain(domain_root: &Path, name: &str, public_api: &PublicApi) -> st
     }
 
     fs::write(
-        domain_root.join("domain.json"),
+        domain_root.join(manifest_file),
         domain_manifest_json(name, public_api),
     )?;
     Ok(())

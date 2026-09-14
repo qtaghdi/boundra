@@ -71,7 +71,16 @@ pub struct ProjectModel {
     pub root: PathBuf,
     pub config: BoundraConfig,
     pub domains: BTreeMap<String, DomainManifest>,
+    pub domain_roots: BTreeMap<String, String>,
     pub path_aliases: Vec<PathAlias>,
+}
+
+impl ProjectModel {
+    pub fn domain_root(&self, name: &str) -> Option<PathBuf> {
+        self.domain_roots
+            .get(name)
+            .map(|relative| self.root.join(relative))
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -254,13 +263,14 @@ impl Default for PublicApi {
 pub fn load_project_model(root: &Path) -> io::Result<ProjectModel> {
     let config = load_config(root)?;
     validate_config(root, &config)?;
-    let domains = load_domain_manifests(root, &config)?;
+    let (domains, domain_roots) = load_domain_manifests(root, &config)?;
     let path_aliases = load_tsconfig_path_aliases(root)?;
 
     Ok(ProjectModel {
         root: root.to_path_buf(),
         config,
         domains,
+        domain_roots,
         path_aliases,
     })
 }
@@ -367,22 +377,28 @@ fn validate_capability_names(field: &str, capabilities: &[String]) -> io::Result
 fn load_domain_manifests(
     root: &Path,
     config: &BoundraConfig,
-) -> io::Result<BTreeMap<String, DomainManifest>> {
+) -> io::Result<(BTreeMap<String, DomainManifest>, BTreeMap<String, String>)> {
     let mut domains = BTreeMap::new();
+    let mut domain_roots = BTreeMap::new();
     let domains_root = root.join(&config.paths.domains);
 
     if !domains_root.exists() {
-        return Ok(domains);
+        return Ok((domains, domain_roots));
     }
 
-    for entry in fs::read_dir(domains_root)? {
-        let entry = entry?;
-        let path = entry.path();
-        if !path.is_dir() {
-            continue;
-        }
+    let mut manifest_paths = Vec::new();
+    collect_domain_manifest_paths(
+        &domains_root,
+        &config.domain.manifest_file,
+        &mut manifest_paths,
+    )?;
+    manifest_paths.sort();
 
-        let fallback_name = path
+    for manifest_path in manifest_paths {
+        let domain_root = manifest_path
+            .parent()
+            .expect("a discovered manifest always has a parent");
+        let fallback_name = domain_root
             .file_name()
             .and_then(|name| name.to_str())
             .unwrap_or_default()
@@ -391,26 +407,54 @@ fn load_domain_manifests(
             continue;
         }
 
-        let manifest_path = path.join(&config.domain.manifest_file);
-        let has_manifest = manifest_path.exists();
-        let manifest = if has_manifest {
-            load_domain_manifest(&manifest_path, &fallback_name, &config.domain.public_api)?
-        } else {
-            DomainManifest {
-                name: fallback_name.clone(),
-                public_api: config.domain.public_api.clone(),
-                depends_on: Vec::new(),
-            }
-        };
+        let manifest =
+            load_domain_manifest(&manifest_path, &fallback_name, &config.domain.public_api)?;
+        validate_domain_manifest(domain_root, &fallback_name, &manifest)?;
 
-        if has_manifest {
-            validate_domain_manifest(&path, &fallback_name, &manifest)?;
+        let relative_root = domain_root.strip_prefix(root).map_err(|_| {
+            io::Error::new(
+                io::ErrorKind::InvalidData,
+                format!(
+                    "domain root is outside the project: {}",
+                    domain_root.display()
+                ),
+            )
+        })?;
+        let relative_root = relative_root.to_string_lossy().replace('\\', "/");
+        if let Some(existing_root) = domain_roots.get(&manifest.name) {
+            return invalid_data(format!(
+                "duplicate domain name '{}': {} and {}",
+                manifest.name, existing_root, relative_root
+            ));
         }
+
+        domain_roots.insert(manifest.name.clone(), relative_root);
         domains.insert(manifest.name.clone(), manifest);
     }
 
     validate_domain_dependencies(&domains)?;
-    Ok(domains)
+    Ok((domains, domain_roots))
+}
+
+fn collect_domain_manifest_paths(
+    directory: &Path,
+    manifest_file: &str,
+    manifests: &mut Vec<PathBuf>,
+) -> io::Result<()> {
+    let mut entries = fs::read_dir(directory)?.collect::<Result<Vec<_>, _>>()?;
+    entries.sort_by_key(|entry| entry.file_name());
+
+    for entry in entries {
+        let path = entry.path();
+        let file_type = entry.file_type()?;
+        if file_type.is_dir() {
+            collect_domain_manifest_paths(&path, manifest_file, manifests)?;
+        } else if file_type.is_file() && entry.file_name() == manifest_file {
+            manifests.push(path);
+        }
+    }
+
+    Ok(())
 }
 
 pub fn load_domain_manifest(

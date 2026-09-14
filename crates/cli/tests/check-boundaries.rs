@@ -517,6 +517,192 @@ fn create_domain_scaffolds_domain_structure() {
 }
 
 #[test]
+fn nested_domains_support_creation_generation_and_coverage() {
+    let root = create_temp_dir("nested-domain-workflow");
+
+    let create = run_boundra(
+        &root,
+        &["create-domain", "billing", "--path", "commerce/core"],
+    );
+    assert_eq!(create.status.code(), Some(0));
+    assert_eq!(
+        run_boundra(&root, &["create-domain", "profile"])
+            .status
+            .code(),
+        Some(0)
+    );
+
+    let domain_root = root.join("domains/commerce/core/billing");
+    assert!(domain_root.join("domain.json").exists());
+    assert!(domain_root.join("shared/public.ts").exists());
+
+    let generate = run_boundra(&root, &["generate", "route", "billing/create-invoice"]);
+    assert_eq!(generate.status.code(), Some(0));
+    assert!(domain_root
+        .join("shared/contracts/create-invoice.ts")
+        .exists());
+    assert!(domain_root.join("server/routes/create-invoice.ts").exists());
+
+    let check = run_boundra(&root, &["check-boundaries", "--format", "json"]);
+    let json = parse_json_stdout(&check);
+    assert_eq!(check.status.code(), Some(0));
+    assert_eq!(json["meta"]["analyzed_domain_count"], 2);
+}
+
+#[test]
+fn nested_domain_roots_drive_dependency_updates_and_boundary_checks() {
+    let root = create_temp_dir("nested-domain-boundaries");
+    assert_eq!(
+        run_boundra(&root, &["create-domain", "order", "--path", "commerce"])
+            .status
+            .code(),
+        Some(0)
+    );
+    assert_eq!(
+        run_boundra(&root, &["create-domain", "billing", "--path", "finance"])
+            .status
+            .code(),
+        Some(0)
+    );
+    assert_eq!(
+        run_boundra(&root, &["add-dependency", "order/billing"])
+            .status
+            .code(),
+        Some(0)
+    );
+
+    let order_manifest = fs::read_to_string(root.join("domains/commerce/order/domain.json"))
+        .expect("failed to read nested order manifest");
+    assert!(order_manifest.contains("\"billing\""));
+
+    fs::write(
+        root.join("domains/commerce/order/server/checkout.ts"),
+        concat!(
+            "import '../../billing/server/internal/charge';\n",
+            "import '../../../finance/billing/server/internal/charge';\n",
+        ),
+    )
+    .expect("failed to write nested source");
+    fs::create_dir_all(root.join("domains/commerce/billing/server/internal"))
+        .expect("failed to create misleading group path");
+    fs::write(
+        root.join("domains/commerce/billing/server/internal/charge.ts"),
+        "export {};\n",
+    )
+    .expect("failed to write misleading target");
+    fs::create_dir_all(root.join("domains/finance/billing/server/internal"))
+        .expect("failed to create discovered internal directory");
+    fs::write(
+        root.join("domains/finance/billing/server/internal/charge.ts"),
+        "export {};\n",
+    )
+    .expect("failed to write discovered internal target");
+
+    let check = run_boundra(&root, &["check-boundaries"]);
+    let stdout = String::from_utf8_lossy(&check.stdout);
+    assert_eq!(check.status.code(), Some(1));
+    assert!(stdout.contains("BR-004"));
+}
+
+#[test]
+fn nested_domain_internal_imports_use_discovered_roots() {
+    let root = create_temp_dir("nested-domain-internal-import");
+    assert_eq!(
+        run_boundra(&root, &["create-domain", "order", "--path", "commerce"])
+            .status
+            .code(),
+        Some(0)
+    );
+    fs::create_dir_all(root.join("apps/web/src")).expect("failed to create app source");
+    fs::create_dir_all(root.join("domains/commerce/order/server/internal"))
+        .expect("failed to create nested internal directory");
+    fs::write(
+        root.join("domains/commerce/order/server/internal/checkout.ts"),
+        "export {};\n",
+    )
+    .expect("failed to write nested internal target");
+    fs::write(
+        root.join("apps/web/src/checkout.ts"),
+        "import '../../../domains/commerce/order/server/internal/checkout';\n",
+    )
+    .expect("failed to write app source");
+
+    let check = run_boundra(&root, &["check-boundaries"]);
+    let stdout = String::from_utf8_lossy(&check.stdout);
+    assert_eq!(check.status.code(), Some(1));
+    assert!(stdout.contains("BR-005"));
+}
+
+#[test]
+fn recursive_discovery_rejects_duplicate_names_deterministically() {
+    let root = create_temp_dir("duplicate-nested-domain");
+    assert_eq!(
+        run_boundra(&root, &["create-domain", "order", "--path", "commerce"])
+            .status
+            .code(),
+        Some(0)
+    );
+    let duplicate_root = root.join("domains/sales/order");
+    fs::create_dir_all(duplicate_root.join("shared")).expect("failed to create duplicate domain");
+    fs::write(duplicate_root.join("shared/public.ts"), "export {};\n")
+        .expect("failed to write duplicate public API");
+    fs::write(
+        duplicate_root.join("domain.json"),
+        r#"{
+  "name": "order",
+  "publicApi": { "client": [], "server": [], "shared": ["./shared/public.ts"] },
+  "dependsOn": []
+}
+"#,
+    )
+    .expect("failed to write duplicate manifest");
+
+    let check = run_boundra(&root, &["check-boundaries"]);
+    let stderr = String::from_utf8_lossy(&check.stderr);
+    assert_eq!(check.status.code(), Some(2));
+    assert!(stderr.contains("duplicate domain name 'order'"));
+    assert!(stderr.contains("domains/commerce/order and domains/sales/order"));
+}
+
+#[test]
+fn nested_discovery_honors_custom_manifest_filename() {
+    let root = create_temp_dir("nested-custom-manifest");
+    fs::write(
+        root.join("boundra.config.json"),
+        r#"{
+  "domain": { "manifestFile": "boundra-domain.json" }
+}
+"#,
+    )
+    .expect("failed to write config");
+
+    let create = run_boundra(&root, &["create-domain", "billing", "--path", "commerce"]);
+    assert_eq!(create.status.code(), Some(0));
+    assert!(root
+        .join("domains/commerce/billing/boundra-domain.json")
+        .exists());
+    assert!(!root.join("domains/commerce/billing/domain.json").exists());
+    assert_eq!(
+        run_boundra(&root, &["check-boundaries"]).status.code(),
+        Some(0)
+    );
+}
+
+#[test]
+fn create_domain_rejects_unsafe_nested_path() {
+    let root = create_temp_dir("unsafe-nested-domain-path");
+    let output = run_boundra(
+        &root,
+        &["create-domain", "billing", "--path", "commerce/../outside"],
+    );
+    let stderr = String::from_utf8_lossy(&output.stderr);
+
+    assert_eq!(output.status.code(), Some(2));
+    assert!(stderr.contains("[ERROR] DOMAIN-005"));
+    assert!(!root.join("outside/billing").exists());
+}
+
+#[test]
 fn create_domain_rejects_non_kebab_case_name() {
     let root = create_temp_dir("create-domain-invalid-name");
 

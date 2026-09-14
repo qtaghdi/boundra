@@ -20,7 +20,10 @@ fn shared_config_fixture_matches_native_loader() {
     assert_eq!(config.domain.manifest_file, "boundra-domain.json");
     assert_eq!(config.domain.public_api.client, vec!["./browser/public.ts"]);
     assert_eq!(config.domain.public_api.server, vec!["./backend/public.ts"]);
-    assert_eq!(config.domain.public_api.shared, vec!["./contract/public.ts"]);
+    assert_eq!(
+        config.domain.public_api.shared,
+        vec!["./contract/public.ts"]
+    );
 
     assert_eq!(
         config.check_boundaries.include_extensions,

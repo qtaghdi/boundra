@@ -63,10 +63,9 @@ pub(crate) fn run(options: &GenerateOptions) -> i32 {
         return 2;
     }
 
-    let domain_root = options
-        .root
-        .join(&project.config.paths.domains)
-        .join(&options.domain);
+    let domain_root = project
+        .domain_root(&options.domain)
+        .expect("domain root exists for every loaded domain");
     let created = match scaffold_generated_artifact(&domain_root, options) {
         Ok(created) => created,
         Err(err) => {

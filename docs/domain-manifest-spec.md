@@ -3,8 +3,12 @@
 ## 1. File Location
 
 ```txt
-domains/<domain>/domain.json
+domains/<optional-group-path>/<domain>/domain.json
 ```
+
+Boundra recursively discovers the configured manifest filename below
+`paths.domains`. The manifest's parent directory becomes the physical domain
+root, while `name` is the stable logical identity.
 
 ## 2. Purpose
 
@@ -57,11 +61,14 @@ Other fields may be present and are preserved when possible, but they are not en
 ## 5. Validation Rules
 
 - `name` must match the domain folder name.
+- duplicate `name` values across different roots are invalid.
 - `dependsOn` entries must reference existing domains.
 - `dependsOn` must form an acyclic graph.
 - public API paths must be relative.
 - public API paths must point to existing files.
 - public API paths must not expose `internal` paths.
+- directories without the configured manifest file are organizational only and
+  are not loaded as domains.
 
 ## 6. Code Generation Behavior
 

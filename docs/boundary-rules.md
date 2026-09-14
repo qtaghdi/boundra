@@ -3,11 +3,11 @@
 ## 1. Rule Set (Hard Constraints)
 
 ### BR-001: Client-to-Server Import Ban
-- Rule: `domains/*/client/**`에서 `domains/*/server/**` import 금지
+- Rule: discovered domain `client/**`에서 같은/다른 discovered domain `server/**` import 금지
 - Reason: 배포 경계/실행 환경 분리
 
 ### BR-002: Server-to-Client Import Ban
-- Rule: `domains/*/server/**`에서 `domains/*/client/**` import 금지
+- Rule: discovered domain `server/**`에서 같은/다른 discovered domain `client/**` import 금지
 - Reason: 계층 역전 방지
 
 ### BR-003: Shared Purity
@@ -49,6 +49,13 @@ If exactly one manifest public API category is non-empty, direct files under
 that domain root are analyzed as that category's layer. This is a layout
 shortcut only; all existing layer and public API rules still apply. See ADR
 0009.
+
+### Nested domain roots
+
+Domain roots are discovered from the configured manifest filename at any depth
+below `paths.domains`. BR-001 through BR-006 use the discovered root rather than
+assuming `paths.domains/<name>`. Group directories have no boundary identity.
+See ADR 0011.
 
 ## 3. Violation Output Format
 

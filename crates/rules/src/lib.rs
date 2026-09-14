@@ -15,6 +15,7 @@ pub struct BoundaryContext {
     pub domains_path: String,
     pub packages_path: String,
     pub domains: BTreeMap<String, DomainManifest>,
+    pub domain_roots: BTreeMap<String, String>,
     pub path_aliases: Vec<PathAlias>,
 }
 
@@ -24,8 +25,9 @@ impl Default for BoundaryContext {
             apps_path: "apps".to_string(),
             domains_path: "domains".to_string(),
             packages_path: "packages".to_string(),
-            domains: BTreeMap::new(),
+            domains: BTreeMap::default(),
             path_aliases: Vec::new(),
+            domain_roots: BTreeMap::new(),
         }
     }
 }
@@ -220,8 +222,35 @@ fn parse_domain_path_with_context(
     path: &str,
     context: &BoundaryContext,
 ) -> Option<(String, Layer)> {
-    let (domain, layer) = parse_domain_path(path, &context.domains_path)?;
-    if layer != Layer::Unknown || !is_direct_domain_child(path, &context.domains_path) {
+    let normalized = normalize_path(path);
+    let discovered = context
+        .domain_roots
+        .iter()
+        .filter(|(_, root)| is_within_path(&normalized, root))
+        .max_by_key(|(_, root)| normalize_path(root).len());
+
+    let (domain, domain_root) = match discovered {
+        Some((domain, root)) => (domain.clone(), normalize_path(root)),
+        None if !context.domain_roots.is_empty() => return None,
+        None => {
+            let (domain, _) = parse_domain_path(path, &context.domains_path)?;
+            let root = normalize_path(&format!("{}/{domain}", context.domains_path));
+            (domain, root)
+        }
+    };
+    let relative = normalized
+        .strip_prefix(&format!("{domain_root}/"))
+        .unwrap_or_default();
+    let layer = match relative.split('/').next()? {
+        "client" => Layer::Client,
+        "server" => Layer::Server,
+        "shared" => Layer::Shared,
+        "mcp" => Layer::Mcp,
+        "tests" => Layer::Tests,
+        _ => Layer::Unknown,
+    };
+
+    if layer != Layer::Unknown || relative.contains('/') {
         return Some((domain, layer));
     }
 
@@ -231,20 +260,6 @@ fn parse_domain_path_with_context(
         .and_then(|manifest| single_public_api_layer(&manifest.public_api))
         .unwrap_or(Layer::Unknown);
     Some((domain, compact_layer))
-}
-
-fn is_direct_domain_child(path: &str, domains_path: &str) -> bool {
-    let normalized = normalize_path(path);
-    let normalized_root = normalize_path(domains_path);
-    let relative = if normalized_root.is_empty() {
-        normalized.as_str()
-    } else if let Some(relative) = normalized.strip_prefix(&format!("{normalized_root}/")) {
-        relative
-    } else {
-        return false;
-    };
-
-    relative.split('/').count() == 2
 }
 
 fn single_public_api_layer(public_api: &PublicApi) -> Option<Layer> {
@@ -407,17 +422,23 @@ fn is_public_api_path(domain: &str, target_path: &str, context: &BoundaryContext
     let normalized = strip_ts_like_extension(&normalized_path);
 
     if let Some(manifest) = context.domains.get(domain) {
-        return manifest.public_api.all_paths().any(|public_path| {
-            normalized == normalize_public_api_path(domain, public_path, &context.domains_path)
-        });
+        let domain_root = context
+            .domain_roots
+            .get(domain)
+            .cloned()
+            .unwrap_or_else(|| format!("{}/{domain}", context.domains_path));
+        return manifest
+            .public_api
+            .all_paths()
+            .any(|public_path| normalized == normalize_public_api_path(&domain_root, public_path));
     }
 
     normalized == normalize_path(&format!("{}/{domain}/shared/public", context.domains_path))
 }
 
-fn normalize_public_api_path(domain: &str, public_path: &str, domains_path: &str) -> String {
+fn normalize_public_api_path(domain_root: &str, public_path: &str) -> String {
     let relative = public_path.strip_prefix("./").unwrap_or(public_path);
-    let normalized = normalize_path(&format!("{domains_path}/{domain}/{relative}"));
+    let normalized = normalize_path(&format!("{domain_root}/{relative}"));
     strip_ts_like_extension(&normalized).to_string()
 }
 
@@ -647,6 +668,7 @@ mod tests {
             domains_path: "domains".to_string(),
             packages_path: "packages".to_string(),
             domains: BTreeMap::new(),
+            domain_roots: BTreeMap::new(),
             path_aliases: Vec::new(),
         };
 
@@ -667,6 +689,7 @@ mod tests {
             domains_path: "domains".to_string(),
             packages_path: "packages".to_string(),
             domains: BTreeMap::new(),
+            domain_roots: BTreeMap::new(),
             path_aliases: Vec::new(),
         };
 
@@ -740,6 +763,7 @@ mod tests {
                     },
                 ),
             ]),
+            domain_roots: BTreeMap::new(),
             path_aliases: Vec::new(),
         };
 
@@ -785,6 +809,7 @@ mod tests {
                     },
                 ),
             ]),
+            domain_roots: BTreeMap::new(),
             path_aliases: Vec::new(),
         };
 
@@ -819,6 +844,7 @@ mod tests {
             domains_path: "domains".to_string(),
             packages_path: "packages".to_string(),
             domains: BTreeMap::new(),
+            domain_roots: BTreeMap::new(),
             path_aliases: vec![PathAlias {
                 prefix: "@domains/".to_string(),
                 target_prefix: "domains/".to_string(),
@@ -843,6 +869,7 @@ mod tests {
             domains_path: "src/lib/domains".to_string(),
             packages_path: "src/lib/packages".to_string(),
             domains: BTreeMap::new(),
+            domain_roots: BTreeMap::new(),
             path_aliases: Vec::new(),
         };
 
@@ -864,6 +891,7 @@ mod tests {
             domains_path: "src/lib/domains".to_string(),
             packages_path: "src/lib/packages".to_string(),
             domains: BTreeMap::new(),
+            domain_roots: BTreeMap::new(),
             path_aliases: vec![PathAlias {
                 prefix: "@workspace/".to_string(),
                 target_prefix: "src/lib/packages/".to_string(),
@@ -899,6 +927,7 @@ mod tests {
                     depends_on: Vec::new(),
                 },
             )]),
+            domain_roots: BTreeMap::new(),
             path_aliases: Vec::new(),
         };
 
@@ -931,6 +960,7 @@ mod tests {
                     depends_on: Vec::new(),
                 },
             )]),
+            domain_roots: BTreeMap::new(),
             path_aliases: Vec::new(),
         };
 
@@ -970,6 +1000,7 @@ mod tests {
                     depends_on: Vec::new(),
                 },
             )]),
+            domain_roots: BTreeMap::new(),
             path_aliases: Vec::new(),
         };
 
@@ -1003,6 +1034,7 @@ mod tests {
                     depends_on: Vec::new(),
                 },
             )]),
+            domain_roots: BTreeMap::new(),
             path_aliases: Vec::new(),
         };
 
@@ -1049,6 +1081,7 @@ mod tests {
                     },
                 ),
             ]),
+            domain_roots: BTreeMap::new(),
             path_aliases: Vec::new(),
         };
 
@@ -1081,6 +1114,7 @@ mod tests {
                     depends_on: Vec::new(),
                 },
             )]),
+            domain_roots: BTreeMap::new(),
             path_aliases: Vec::new(),
         };
 
