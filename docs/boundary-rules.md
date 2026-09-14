@@ -1,17 +1,20 @@
 # Boundary Rules
 
+`<discovered-domain-root>` means the parent directory of a recursively
+discovered domain manifest. It may be nested below `paths.domains`.
+
 ## 1. Rule Set (Hard Constraints)
 
 ### BR-001: Client-to-Server Import Ban
-- Rule: `domains/*/client/**`에서 `domains/*/server/**` import 금지
+- Rule: discovered domain `client/**`에서 같은/다른 discovered domain `server/**` import 금지
 - Reason: 배포 경계/실행 환경 분리
 
 ### BR-002: Server-to-Client Import Ban
-- Rule: `domains/*/server/**`에서 `domains/*/client/**` import 금지
+- Rule: discovered domain `server/**`에서 같은/다른 discovered domain `client/**` import 금지
 - Reason: 계층 역전 방지
 
 ### BR-003: Shared Purity
-- Rule: `domains/*/shared/**`는 shared policy가 거부한 capability 의존 금지
+- Rule: `<discovered-domain-root>/shared/**`는 shared policy가 거부한 capability 의존 금지
 - Default denied capabilities: `ui`, `database`, `runtime`
 - Default classification preserves the existing React/Next, Prisma, Node runtime,
   `packages/ui`, `packages/db`, `packages/infra`, and app-path behavior
@@ -22,12 +25,12 @@
 
 ### BR-004: Cross-Domain Access Policy
 - Rule: 도메인 간 직접 내부 경로 import 금지
-- Allow: `domains/<other>/shared/public` 또는 명시된 public API만 허용
+- Allow: `<other-discovered-domain-root>/shared/public` 또는 명시된 public API만 허용
 - Reason: 내부 구현 은닉과 변경 안전성 확보
 
 ### BR-005: App-to-Domain Public API Policy
-- Rule: `apps/**`에서 `domains/**`를 import할 때 해당 도메인의 manifest에 선언된 public API만 허용
-- Allow: `domains/<domain>/client/public`, `server/public`, `shared/public` 또는 manifest에 명시된 public API
+- Rule: `apps/**`에서 `<discovered-domain-root>/**`를 import할 때 해당 도메인의 manifest에 선언된 public API만 허용
+- Allow: `<discovered-domain-root>/client/public`, `server/public`, `shared/public` 또는 manifest에 명시된 public API
 - Reason: composition root인 앱이 도메인 내부 구현에 결합되는 것을 방지
 
 ### BR-006: Declared Domain Dependency Policy
@@ -49,6 +52,13 @@ If exactly one manifest public API category is non-empty, direct files under
 that domain root are analyzed as that category's layer. This is a layout
 shortcut only; all existing layer and public API rules still apply. See ADR
 0009.
+
+### Nested domain roots
+
+Domain roots are discovered from the configured manifest filename at any depth
+below `paths.domains`. BR-001 through BR-006 use the discovered root rather than
+assuming `paths.domains/<name>`. Group directories have no boundary identity.
+See ADR 0011.
 
 ## 3. Violation Output Format
 

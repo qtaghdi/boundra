@@ -32,15 +32,20 @@ Input rules:
 - `<name>` must be `kebab-case`.
 
 Generated targets:
-- `domains/<name>/client/`
-- `domains/<name>/server/`
-- `domains/<name>/shared/`
-- `domains/<name>/mcp/`
-- `domains/<name>/tests/`
-- `domains/<name>/domain.json`
+- `<paths.domains>/[<parent-path>/]<name>/client/`
+- `<paths.domains>/[<parent-path>/]<name>/server/`
+- `<paths.domains>/[<parent-path>/]<name>/shared/`
+- `<paths.domains>/[<parent-path>/]<name>/mcp/`
+- `<paths.domains>/[<parent-path>/]<name>/tests/`
+- `<paths.domains>/[<parent-path>/]<name>/<domain.manifestFile>`
 
 Options:
 - `--root <path>` (default: `.`)
+- `--path <parent-path>` (default: empty; relative to `paths.domains`)
+
+`--path` accepts one or more kebab-case directory segments, for example
+`create-domain order --path commerce/core`. It rejects absolute paths, `.` and
+`..` segments, and a domain name that already exists at another root.
 
 ### 1.2 `check-boundaries`
 
@@ -52,6 +57,7 @@ Options:
 
 Coverage reporting:
 - `paths.domains` is analyzed independently from `paths.apps`.
+- Domains are discovered recursively by the configured manifest filename.
 - JSON metadata includes `scanned_file_count` and `analyzed_domain_count`.
   `analyzed_domain_count` counts unique domains that contain at least one source
   file included by the configured scan, not merely loaded manifests.
@@ -80,10 +86,12 @@ Options:
 - `--root <path>` (default: `.`)
 
 Side effects:
-- Generated shared contract files are appended to `domains/<domain>/domain.json` under `publicApi.shared`.
-- Generated shared contracts are exported from `domains/<domain>/shared/public.ts`.
-- Generated query and mutation adapters are exported idempotently from
-  `domains/<domain>/client/public.ts`.
+- Generated shared contract files are appended to the discovered domain
+  manifest under `publicApi.shared`.
+- Generated shared contracts are exported from the discovered domain root's
+  `shared/public.ts`.
+- Generated query and mutation adapters are exported idempotently from the
+  discovered domain root's `client/public.ts`.
 - Generation restores generated files, the manifest, and public barrels when a
   public API update fails, so retrying does not encounter partial output.
 - Existing `publicApi.shared` entries are preserved and duplicate entries are not added.
@@ -104,7 +112,7 @@ Options:
 - `--root <path>` (default: `.`)
 
 Side effects:
-- append `<dependency>` to `<domain>/domain.json` `dependsOn`
+- append `<dependency>` to the discovered `<domain>` manifest `dependsOn`
 - preserve existing dependencies
 - do not add duplicates
 

@@ -13,12 +13,14 @@ examples/
     src/
 
 domains/
-  <domain>/
-    client/
-    server/
-    shared/
-    mcp/
-    tests/
+  [<group>/...]
+    <domain>/
+      domain.json
+      client/
+      server/
+      shared/
+      mcp/
+      tests/
 
 packages/
   runtime/
@@ -39,6 +41,10 @@ crates/
 projects. An example must keep its own Boundra config, TypeScript config, and
 domains so it can be checked through an explicit `--root` without treating the
 framework repository itself as an application.
+
+Domain manifests are discovered recursively below `paths.domains`. Optional
+group directories organize the filesystem but do not become part of domain
+identity; the manifest `name` remains the stable identity. See ADR 0011.
 
 ## 2. Domain Layers
 

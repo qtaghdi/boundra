@@ -73,10 +73,9 @@ pub(crate) fn run(options: &AddDependencyOptions) -> i32 {
         return 2;
     }
 
-    let manifest_path = options
-        .root
-        .join(&project.config.paths.domains)
-        .join(&options.domain)
+    let manifest_path = project
+        .domain_root(&options.domain)
+        .expect("domain root exists for every loaded domain")
         .join(&project.config.domain.manifest_file);
     let changed = match append_dependency(&manifest_path, &options.dependency) {
         Ok(changed) => changed,
