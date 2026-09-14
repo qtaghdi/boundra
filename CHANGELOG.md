@@ -6,6 +6,30 @@ The format follows Keep a Changelog and versions follow Semantic Versioning.
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-09-14
+
+### Added
+
+- recursive manifest-backed domain discovery below `paths.domains`
+- stable manifest-name-to-domain-root mapping for nested domain layouts
+- `create-domain --path <parent-path>` for safe nested domain scaffolding
+- root `package.json#imports` resolution for exact aliases and single-wildcard patterns
+
+### Changed
+
+- use discovered domain roots for boundary analysis, coverage reporting, code
+  generation, dependency updates, and graph inputs
+- treat directories without the configured domain manifest as organizational
+  groups instead of implicit domains
+- document the boundary between alias validation and deployment artifact tracing
+
+### Fixed
+
+- reject duplicate domain names deterministically across nested roots
+- prevent nested domain creation through symlinked child paths
+- reject package import alias targets that escape the workspace
+- preserve exact alias matching so similarly prefixed imports do not resolve accidentally
+
 ## [0.5.0] - 2026-08-28
 
 ### Added
