@@ -46,6 +46,16 @@ Options:
 
 Analyze imports and detect boundary rule violations.
 
+Resolution inputs:
+
+- relative and workspace-relative imports
+- root/relative-extends `tsconfig.json` `compilerOptions.paths`
+- root `package.json#imports` local string mappings, including one `*` pattern
+
+Resolving a package import alias makes existing boundary rules visible through
+that alias. It does not guarantee that a deployment platform includes the
+target source file in its server artifact.
+
 Options:
 - `--root <path>` (default: `.`)
 - `--format text|json` (default: `text`)

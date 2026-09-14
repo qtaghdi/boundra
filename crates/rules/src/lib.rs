@@ -183,10 +183,20 @@ pub fn resolve_import_path_with_context(
 }
 
 fn resolve_aliased_import_path(import_path: &str, path_aliases: &[PathAlias]) -> Option<String> {
-    // alias는 prefix 치환만 한다. 실제 파일 존재 여부는 boundary 판단에 필요하지 않다.
     for alias in path_aliases {
-        if let Some(rest) = import_path.strip_prefix(&alias.prefix) {
-            return Some(normalize_path(&format!("{}{}", alias.target_prefix, rest)));
+        let rest = if alias.exact {
+            (import_path == alias.prefix).then_some("")
+        } else {
+            import_path
+                .strip_prefix(&alias.prefix)
+                .and_then(|rest| rest.strip_suffix(&alias.suffix))
+        };
+        if let Some(rest) = rest {
+            let capture = if alias.target_uses_wildcard { rest } else { "" };
+            return Some(normalize_path(&format!(
+                "{}{}{}",
+                alias.target_prefix, capture, alias.target_suffix
+            )));
         }
     }
 
@@ -821,7 +831,11 @@ mod tests {
             domains: BTreeMap::new(),
             path_aliases: vec![PathAlias {
                 prefix: "@domains/".to_string(),
+                suffix: String::new(),
                 target_prefix: "domains/".to_string(),
+                target_suffix: String::new(),
+                target_uses_wildcard: true,
+                exact: false,
             }],
         };
 
@@ -866,7 +880,11 @@ mod tests {
             domains: BTreeMap::new(),
             path_aliases: vec![PathAlias {
                 prefix: "@workspace/".to_string(),
+                suffix: String::new(),
                 target_prefix: "src/lib/packages/".to_string(),
+                target_suffix: String::new(),
+                target_uses_wildcard: true,
+                exact: false,
             }],
         };
 

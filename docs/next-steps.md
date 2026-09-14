@@ -101,6 +101,20 @@ Completed:
 - Preserve existing relative and `domains/` import behavior.
 - Added E2E coverage for alias-resolved violations.
 
+## Completed: Resolve Package Import Aliases
+
+Boundary checks resolve local string mappings from root `package.json#imports`
+before applying BR-001 through BR-006.
+
+Completed:
+
+- Resolve exact `#name` mappings and single-wildcard `#name/*` patterns.
+- Reject local targets that escape the workspace.
+- Preserve exact-match semantics so similarly prefixed package imports do not
+  resolve accidentally.
+- Document that boundary resolution does not replace deployment artifact
+  tracing or smoke tests.
+
 ## Completed: Start Code Generation
 
 Once config, manifest, and boundary validation are stable, Boundra can move from boundary checker to framework workflow.

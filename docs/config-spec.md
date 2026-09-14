@@ -216,12 +216,20 @@ When no config file is present, Boundra behaves as if the following config exist
 - external capability wildcards must be a single trailing `*`
 - workspace capability package keys must be direct child names under `paths.packages`
 
-## 6. TypeScript Path Aliases
+## 6. Workspace Import Aliases
 
 When a root `tsconfig.json` exists, Boundra reads `compilerOptions.paths` for
 boundary resolution. Relative `extends` chains are resolved from parent to
 child, and child aliases override aliases with the same pattern. Alias targets
 respect the `baseUrl` of the config that declares them.
+
+When a root `package.json` exists, Boundra also reads local string mappings from
+the standard `imports` field. Exact mappings such as
+`"#billing": "./domains/billing/shared/public.ts"` and single-wildcard
+patterns such as `"#domain/*": "./domains/*/shared/public.ts"` resolve into
+workspace paths before BR-001 through BR-006 run. Targets must start with `./`
+and remain inside the workspace. Conditional objects and arrays are left to the
+Node.js runtime and are not resolved by the current static analyzer.
 
 Each file is parsed as JSONC, including comments and trailing commas, to match
 normal TypeScript configuration syntax. Package-based `extends` values are
@@ -229,6 +237,12 @@ ignored until Boundra defines package resolution semantics.
 
 Only `compilerOptions.paths` affects the Boundra project model. Other TypeScript
 compiler options remain owned by the TypeScript toolchain.
+
+Alias resolution validates architectural boundaries, not deployment artifact
+tracing. An alias that points directly at raw TypeScript can still require
+bundler or platform include configuration. Prefer a workspace package or a
+runtime-resolvable built entrypoint for server code, and keep a deployment
+smoke test for the produced artifact.
 
 ## 7. Not Yet Supported
 
